@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Financial Fraud Response Simulator · CYBER SURAKSHA{% endblock %}
+{% block content %}
+<section class="page-title">
+  <p class="eyebrow">STAGE 3 · FINANCIAL FRAUD RESPONSE SIMULATOR</p>
+  <h1>Pause. Identify. Respond.</h1>
+  <p class="lead">Practise how to respond to a fictional digital-payment fraud scenario. No real transactions or bank connections are used.</p>
+</section>
+<div class="privacy"><b>SIMULATION ONLY:</b> All names, events, amounts and transactions on this page are fictional. This tool does not contact a bank, block a payment or file a complaint.</div>
+<section class="form-card">
+  <form method="get" action="{{ url_for('fraud_simulator') }}">
+    <label for="scenario">Choose a scenario</label>
+    <select id="scenario" name="scenario" onchange="this.form.submit()">
+      <option value="collect_request" {% if scenario_id == 'collect_request' %}selected{% endif %}>Fake refund / UPI collect request</option>
+      <option value="remote_access" {% if scenario_id == 'remote_access' %}selected{% endif %}>Fake customer-care / screen-sharing scam</option>
+    </select>
+  </form>
+  <h2>{{ scenario.title }}</h2>
+  <p>{{ scenario.risk }}</p>
+  <h3>Fictional incident timeline</h3>
+  <ol class="timeline">
+    {% for time, event in scenario.events %}<li><b>{{ time }}</b><span>{{ event }}</span></li>{% endfor %}
+  </ol>
+</section>
+<section class="form-card">
+  <h2>What should the victim do?</h2>
+  <p>Select every action you believe is safe and appropriate, then submit your answers.</p>
+  <form method="post" action="{{ url_for('fraud_simulator') }}">
+    <input type="hidden" name="scenario" value="{{ scenario_id }}">
+    {% for action_id, action_text in scenario.actions %}
+      <label class="action-option"><input type="checkbox" name="actions" value="{{ action_id }}" {% if action_id in selected %}checked{% endif %}> <span>{{ action_text }}</span></label>
+    {% endfor %}
+    <button class="button" type="submit">Check my response</button>
+  </form>
+  {% if result %}
+    <div class="result-panel">
+      <p class="eyebrow">YOUR SIMULATION RESULT</p>
+      <strong class="score">{{ result.score }} / 100</strong>
+      <p>Correct actions selected: {{ result.correct_selected }} · Unsafe actions selected: {{ result.incorrect_selected }} · Important actions missed: {{ result.missed }}</p>
+      <h3>Key lesson</h3><p>{{ scenario.lesson }}</p>
+      <p><b>Remember:</b> For an actual financial cyber fraud in India, call <b>1930</b> immediately and report at <a href="https://cybercrime.gov.in/" target="_blank" rel="noopener">cybercrime.gov.in</a>. Contact your bank using a verified official channel.</p>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}
