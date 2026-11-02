@@ -63,7 +63,7 @@ The website uses synthetic examples and public read-only demonstration mode. It 
 1. Download or clone this repository and extract it if downloaded as a ZIP.
 2. Open the project folder.
 3. Double-click `run_windows.bat`.
-4. Wait for the local server to start, then open **http://127.0.0.1:5000/** in your browser.
+4. Wait for the local server to start, then open **(https://cyber-suraksha-2-0.onrender.com)** in your browser.
 5. To stop the server, focus its terminal window and press `Ctrl+C`.
 
 ### Manual setup with PowerShell
