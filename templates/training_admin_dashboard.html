@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Training Case Management · CYBER SURAKSHA 2.0{% endblock %}
+{% block content %}
+<section class="page-title">
+  <p class="eyebrow">STAGE 3 · LOCAL TRAINING ONLY</p>
+  <h1>Fictional Incident Management</h1>
+  <p class="lead">Logged in as {{ role|e }}. Only synthetic seeded cases are shown. No real personal details are displayed.</p>
+</section>
+<section class="form-card">
+  <form method="post" action="{{ url_for('stage3_logout') }}">
+    <input type="hidden" name="_csrf" value="{{ csrf }}">
+    <button class="button" type="submit">Log out</button>
+  </form>
+  <h2>Training case register</h2>
+  <div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;text-align:left">
+      <thead><tr><th scope="col">Reference</th><th scope="col">Category</th><th scope="col">Channel</th><th scope="col">Date</th><th scope="col">Status</th><th scope="col">Practice update</th></tr></thead>
+      <tbody>
+      {% for case in cases %}
+      <tr>
+        <td>{{ case.reference }}</td><td>{{ case.incident_type }}</td><td>{{ case.channel }}</td>
+        <td>{{ case.incident_date }}</td><td>{{ case.status }}</td>
+        <td>
+          {% if role == 'admin' %}
+          <form method="post" action="{{ url_for('stage3_update_status',reference=case.reference) }}">
+            <input type="hidden" name="_csrf" value="{{ csrf }}">
+            <label>Set status
+              <select name="status" required>{% for s in statuses %}<option value="{{ s }}" {% if s == case.status %}selected{% endif %}>{{ s }}</option>{% endfor %}</select>
+            </label>
+            <button class="button" type="submit">Update</button>
+          </form>
+          {% else %}Viewer: read-only{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+<section class="form-card">
+  <h2>Local audit history</h2>
+  <div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;text-align:left">
+      <thead><tr><th>UTC time</th><th>Role</th><th>Action</th><th>Case</th><th>Change</th></tr></thead>
+      <tbody>
+      {% for event in events %}<tr><td>{{ event.event_time }}</td><td>{{ event.actor_role }}</td><td>{{ event.action }}</td><td>{{ event.case_ref or '—' }}</td><td>{{ event.detail }}</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="privacy">Training only: these logs are local, not immutable or production grade. This application does not receive or forward official complaints.</p>
+</section>
+{% endblock %}
