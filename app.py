@@ -514,6 +514,10 @@ seed_demo_data()
 init_extended_db()
 seed_integrated_data()
 
+# CYBER_SURAKSHA_UNIFIED_SHOWCASE_REGISTERED
+from stage4_showcase import register_training_showcase
+register_training_showcase(app, get_db)
+
 # STAGE3_LOCAL_TRAINING_REGISTERED
 from stage3_admin import register_stage3
 register_stage3(app, get_db, lambda: PUBLIC_DEMO_MODE)
