@@ -153,6 +153,19 @@ For a **read-only public website**, follow [DEPLOYMENT.md](DEPLOYMENT.md). The s
 
 Before uploading run `python scripts/check_release.py` and `python -m unittest discover -s tests -v`. The automated test suite does not constitute a security audit.
 
-## Maintainer and project ownership
 
-Project lead / repository maintainer: **Jatoth Ramakrishna** (SENTRIX SYSTEMS). See [ownership and licensing notes](OWNERSHIP_AND_CREDITS.md). Ownership of the GitHub account does not supersede third-party licences.
+## Project Ownership and Maintenance
+
+**Project Name:** CYBER SURAKSHA 2.0  
+**Subtitle:** From Cyber Fraud Awareness to Intelligent Cybercrime Prevention & Response
+
+**Project Lead and Repository Maintainer:** Jatoth Ramakrishna  
+**Team:** SENTRIX SYSTEMS  
+**GitHub Repository Owner:** [rk-Hud](https://github.com/rk-Hud)  
+**Website:** https://cyber-suraksha-2-0.onrender.com
+
+CYBER SURAKSHA 2.0 is a student-led cybersecurity education and social-impact prototype maintained through the GitHub account identified above.
+
+The repository owner controls repository administration and maintenance. Copyright ownership and reuse rights remain subject to the included MIT License and any applicable third-party licences.
+
+For contributions, refer to `CONTRIBUTING.md`. For responsible vulnerability reporting, refer to `SECURITY.md`.
