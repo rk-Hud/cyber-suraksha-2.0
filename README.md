@@ -15,6 +15,17 @@
 ## Project overview
 
 CYBER SURAKSHA 2.0 is a Python/Flask learning prototype that brings together cyber-fraud awareness, fictional incident intake, SOC alert triage practice, simulated Zero Trust decisions and responsible vulnerability-disclosure practice. It is designed for demonstrations, beginner learning and social-impact awareness.
+## Live Website
+
+**CYBER SURAKSHA 2.0 — From Cyber Fraud Awareness to Intelligent Cybercrime Prevention & Response**
+
+- **Live Website:** https://cyber-suraksha-2-0.onrender.com
+- **Application Health Check:** https://cyber-suraksha-2-0.onrender.com/health
+- **GitHub Repository:** https://github.com/rk-Hud/cyber-suraksha-2.0
+
+**Deployment Status:** Live educational demonstration.
+
+The website uses synthetic examples and public read-only demonstration mode. It does not provide official cybercrime reporting, government integration or live emergency response.
 
 > **Important:** This is not an official cybercrime reporting service or a production security platform. Data is stored locally in SQLite. The application does not contact law-enforcement agencies, CERT-In, banks, UPI providers, telecom operators or live SIEM/EDR systems. It cannot block payments, isolate devices or enforce real access decisions.
 
