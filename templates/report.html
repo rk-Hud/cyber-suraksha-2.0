@@ -1,7 +1,8 @@
 {% extends "base.html" %}{% block title %}Report · Cyber Suraksha{% endblock %}
 {% block content %}
-<div class="page-title"><p class="eyebrow">CITIZEN INTAKE</p><h1>Record a cyber incident</h1><p class="lead">Use fictional details for testing. This form saves only to the local SQLite database on this computer.</p></div>
-<form method="post" class="form-card">
+<div class="page-title"><p class="eyebrow">CITIZEN INTAKE</p><h1>Record a cyber incident</h1><p class="lead">Use fictional details for testing. {% if public_demo %}Public submission is disabled. Review fictional examples in the incident register.{% else %}This form saves only to the local SQLite database on this computer.{% endif %}</p></div>
+<div class="privacy" role="status"><strong>Public demonstration:</strong> Incident submission is disabled for privacy. Explore the synthetic incident register and learning simulators. For real fraud in India, call 1930 or use the official cybercrime.gov.in portal.</div>
+{% if not public_demo %}<form method="post" class="form-card">
   <div class="form-grid">
     <label>Incident category<select name="incident_type" required>
       {% for v in ["Phishing / fake link","UPI / payment fraud","Identity theft","Investment / job scam","Social media impersonation","Other"] %}<option {% if form.get('incident_type')==v %}selected{% endif %}>{{ v }}</option>{% endfor %}
@@ -18,5 +19,5 @@
   <label>Evidence note (do not upload sensitive files)<textarea name="evidence_note" rows="3" maxlength="1000" placeholder="Example: Synthetic screenshot CS-DEMO-01; transaction reference ending DEMO-21.">{{ form.get('evidence_note','') }}</textarea></label>
   <div class="privacy"><b>Privacy and safety:</b> Do not enter real victim data in this classroom prototype. It has no authentication, encryption-at-rest configuration, secure evidence storage or government integration. For real fraud, contact 1930 and the official portal.</div>
   <button class="button" type="submit">Save local report →</button>
-</form>
+</form>{% endif %}
 {% endblock %}

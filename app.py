@@ -9,12 +9,20 @@ BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR / "cyber_suraksha.db"
 
 app = Flask(__name__)
+# Fresh local secret unless the deployer supplies a persistent environment secret.
+# Never commit the value of CYBER_SURAKSHA_SECRET to source control.
 app.secret_key = os.environ.get("CYBER_SURAKSHA_SECRET") or os.urandom(32)
+PUBLIC_DEMO_MODE = os.environ.get("PUBLIC_DEMO_MODE", "0") == "1"
+app.config.update(
+    MAX_CONTENT_LENGTH=16 * 1024,
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=os.environ.get("COOKIE_SECURE", "0") == "1",
+)
 
 
 class ClosingSQLiteConnection(sqlite3.Connection):
-    """Commit or roll back, then close the connection when leaving a with block."""
-
+    """SQLite connection that commits/rolls back and always closes on context exit."""
     def __exit__(self, exc_type, exc_value, traceback):
         try:
             return super().__exit__(exc_type, exc_value, traceback)
@@ -23,12 +31,10 @@ class ClosingSQLiteConnection(sqlite3.Connection):
 
 
 def get_db():
-    conn = sqlite3.connect(
-        DB_PATH,
-        factory=ClosingSQLiteConnection
-    )
+    conn = sqlite3.connect(DB_PATH, factory=ClosingSQLiteConnection)
     conn.row_factory = sqlite3.Row
     return conn
+
 
 def init_db():
     with get_db() as conn:
@@ -84,23 +90,25 @@ def seed_demo_data():
 @app.route("/")
 def dashboard():
     with get_db() as conn:
-        total = conn.execute("SELECT COUNT(*) FROM incidents").fetchone()[0]
+        total = conn.execute("SELECT COUNT(*) FROM incidents WHERE is_demo=1" if PUBLIC_DEMO_MODE else "SELECT COUNT(*) FROM incidents").fetchone()[0]
         open_count = conn.execute(
-            "SELECT COUNT(*) FROM incidents WHERE status NOT IN ('Closed')"
+            "SELECT COUNT(*) FROM incidents WHERE is_demo=1 AND status NOT IN ('Closed')" if PUBLIC_DEMO_MODE else "SELECT COUNT(*) FROM incidents WHERE status NOT IN ('Closed')"
         ).fetchone()[0]
         total_amount = conn.execute(
-            "SELECT COALESCE(SUM(amount),0) FROM incidents"
+            "SELECT COALESCE(SUM(amount),0) FROM incidents WHERE is_demo=1" if PUBLIC_DEMO_MODE else "SELECT COALESCE(SUM(amount),0) FROM incidents"
         ).fetchone()[0]
         recent = conn.execute(
-            "SELECT * FROM incidents ORDER BY id DESC LIMIT 8"
+            "SELECT * FROM incidents WHERE is_demo=1 ORDER BY id DESC LIMIT 8" if PUBLIC_DEMO_MODE else "SELECT * FROM incidents ORDER BY id DESC LIMIT 8"
         ).fetchall()
-    return render_template("dashboard.html", total=total, open_count=open_count,
+    return render_template("index.html", total=total, open_count=open_count,
                            total_amount=total_amount, recent=recent)
 
 
 @app.route("/report", methods=["GET", "POST"])
 def report():
     if request.method == "POST":
+        if PUBLIC_DEMO_MODE:
+            return "Public demo is read-only. Do not submit real incidents here.", 403
         incident_type = request.form.get("incident_type", "").strip()
         channel = request.form.get("channel", "").strip()
         incident_date = request.form.get("incident_date", "").strip()
@@ -160,14 +168,14 @@ def report():
 @app.route("/incidents")
 def incidents():
     with get_db() as conn:
-        rows = conn.execute("SELECT * FROM incidents ORDER BY id DESC").fetchall()
+        rows = conn.execute("SELECT * FROM incidents WHERE is_demo=1 ORDER BY id DESC" if PUBLIC_DEMO_MODE else "SELECT * FROM incidents ORDER BY id DESC").fetchall()
     return render_template("incidents.html", incidents=rows)
 
 
 @app.route("/incident/<reference>")
 def incident_detail(reference):
     with get_db() as conn:
-        row = conn.execute("SELECT * FROM incidents WHERE reference=?", (reference,)).fetchone()
+        row = conn.execute("SELECT * FROM incidents WHERE reference=? AND is_demo=1" if PUBLIC_DEMO_MODE else "SELECT * FROM incidents WHERE reference=?", (reference,)).fetchone()
     if row is None:
         return render_template("not_found.html"), 404
     return render_template("incident_detail.html", incident=row)
@@ -245,7 +253,7 @@ def fraud_simulator():
 
 @app.route("/health")
 def health():
-    return jsonify({"status": "ok", "application": "Cyber Suraksha", "mode": "local prototype"})
+    return jsonify({"status": "ok", "application": "Cyber Suraksha", "mode": "public read-only demo" if PUBLIC_DEMO_MODE else "local prototype"})
 
 
 # ---------------------------------------------------------------------------
@@ -324,7 +332,7 @@ def select_language():
 @app.context_processor
 def inject_language():
     lang = session.get("lang", "en")
-    return {"lang": lang, "t": UI_TEXT.get(lang, UI_TEXT["en"])}
+    return {"lang": lang, "t": UI_TEXT.get(lang, UI_TEXT["en"]), "public_demo": PUBLIC_DEMO_MODE}
 
 
 def init_extended_db():
@@ -395,6 +403,8 @@ def soc_investigate(alert_id):
     with get_db() as conn: alert = conn.execute("SELECT * FROM soc_alerts WHERE alert_id=?", (alert_id,)).fetchone()
     if alert is None: return render_template("not_found.html"), 404
     if request.method == "POST":
+        if PUBLIC_DEMO_MODE:
+            return "Public demo investigation notes are read-only.", 403
         new_status = request.form.get("status", "New")
         assessment = request.form.get("assessment", "").strip()[:1000]
         notes = request.form.get("analyst_notes", "").strip()[:3000]
@@ -431,10 +441,11 @@ def zero_trust():
         allow = all(s[k] for k in ("identity","device","location","mfa","role"))
         decision = "ALLOW (SIMULATED)" if allow else "DENY / STEP-UP (SIMULATED)"
         reason = s["reason"]
-        with get_db() as conn:
-            conn.execute("INSERT INTO zero_trust_evaluations (scenario_id,decision,reason,created_at,is_demo) VALUES (?,?,?,?,1)",
-                         (scenario_id, decision, reason, datetime.now(timezone.utc).isoformat(timespec="seconds")))
-            conn.commit()
+        if not PUBLIC_DEMO_MODE:
+            with get_db() as conn:
+                conn.execute("INSERT INTO zero_trust_evaluations (scenario_id,decision,reason,created_at,is_demo) VALUES (?,?,?,?,1)",
+                             (scenario_id, decision, reason, datetime.now(timezone.utc).isoformat(timespec="seconds")))
+                conn.commit()
         result = {"decision":decision,"reason":reason,"signals":s}
     with get_db() as conn:
         history = conn.execute("SELECT * FROM zero_trust_evaluations ORDER BY id DESC LIMIT 8").fetchall()
@@ -445,6 +456,8 @@ def zero_trust():
 def disclosure():
     errors = []
     if request.method == "POST":
+        if PUBLIC_DEMO_MODE:
+            return "Public demo disclosure submissions are disabled.", 403
         asset = request.form.get("asset", "").strip()
         title = request.form.get("title", "").strip()
         severity = request.form.get("severity", "Low")
@@ -465,7 +478,7 @@ def disclosure():
                 conn.commit()
             flash("Local training disclosure saved: " + ref + ". It was not sent to any organisation.", "success")
             return redirect(url_for("disclosure"))
-    with get_db() as conn: reports = conn.execute("SELECT * FROM disclosure_reports ORDER BY id DESC LIMIT 20").fetchall()
+    with get_db() as conn: reports = conn.execute("SELECT * FROM disclosure_reports WHERE is_demo=1 ORDER BY id DESC LIMIT 20" if PUBLIC_DEMO_MODE else "SELECT * FROM disclosure_reports ORDER BY id DESC LIMIT 20").fetchall()
     return render_template("disclosure.html", reports=reports)
 
 

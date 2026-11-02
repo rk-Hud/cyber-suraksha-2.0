@@ -24,6 +24,20 @@ class IntegratedCyberSurakshaTests(unittest.TestCase):
             row=conn.execute("SELECT reference FROM incidents WHERE reference='CS-PRESERVE-01'").fetchone()
         self.assertIsNotNone(row)
 
+    def test_public_read_only_demo(self):
+        previous = cyber_app.PUBLIC_DEMO_MODE
+        cyber_app.PUBLIC_DEMO_MODE = True
+        try:
+            self.assertEqual(self.client.get('/').status_code, 200)
+            self.assertEqual(self.client.get('/incidents').status_code, 200)
+            self.assertEqual(self.client.post('/report', data={}).status_code, 403)
+            self.assertEqual(self.client.post('/disclosure', data={}).status_code, 403)
+            self.assertEqual(self.client.post('/soc/SOC-DEMO-001', data={}).status_code, 403)
+            self.assertEqual(self.client.post('/zero-trust', data={'scenario':'unknown_device'}).status_code, 200)
+            self.assertIn(b'read-only', self.client.get('/health').data)
+        finally:
+            cyber_app.PUBLIC_DEMO_MODE = previous
+
     def test_stage1_stage2_pages_load(self):
         self.assertEqual(self.client.get('/').status_code, 200)
         self.assertEqual(self.client.get('/report').status_code, 200)

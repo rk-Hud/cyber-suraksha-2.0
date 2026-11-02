@@ -1,0 +1,24 @@
+[
+  {
+    "reference": "CS-SAMPLE-001",
+    "incident_type": "Phishing / fake link",
+    "channel": "SMS",
+    "incident_date": "2026-10-28",
+    "amount_inr": 0,
+    "contact_name": "Fictional Citizen A",
+    "contact_phone": "9000000001",
+    "description": "A fictional SMS claims an account will be suspended and urges the recipient to open a link.",
+    "evidence_note": "Synthetic training example; no real URL or personal data."
+  },
+  {
+    "reference": "CS-SAMPLE-002",
+    "incident_type": "UPI / payment fraud",
+    "channel": "UPI app",
+    "incident_date": "2026-10-29",
+    "amount_inr": 0,
+    "contact_name": "Fictional Citizen B",
+    "contact_phone": "9000000002",
+    "description": "A fictional user is asked to approve a collect request under the false promise of receiving a refund.",
+    "evidence_note": "Synthetic scenario; no actual payment or transaction took place."
+  }
+]
