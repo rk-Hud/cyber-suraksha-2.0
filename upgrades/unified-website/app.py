@@ -21,6 +21,10 @@ DB_FILE = DATA_DIR / 'cyber_suraksha.db'
 LOCAL_TRAINING = os.environ.get('CS_LOCAL_TRAINING', '0') == '1'
 PUBLIC_MODE = os.environ.get('CS_PUBLIC_MODE', '1') != '0'
 ON_HOSTING = bool(os.environ.get('RENDER') or os.environ.get('DYNO'))
+# Explicitly opt-in to a temporary hosted DEMONSTRATION of fictional citizen flows.
+# Never switch the existing incident-reporting or training admin operations to public writes.
+HOSTED_DEMO = bool(ON_HOSTING and PUBLIC_MODE and not LOCAL_TRAINING and os.environ.get('CS_HOSTED_DEMO') == '1')
+DEMO_ADMIN_HASH = os.environ.get('CS_DEMO_ADMIN_PASSWORD_HASH', '') if HOSTED_DEMO else ''
 SESSION_SECRET = (os.environ.get('CS_SESSION_SECRET') or '').encode() or secrets.token_bytes(32)
 ADMIN_HASH = os.environ.get('CS_ADMIN_PASSWORD_HASH','')
 VIEWER_HASH = os.environ.get('CS_VIEWER_PASSWORD_HASH','')
@@ -133,8 +137,8 @@ def encode_sess(payload):
     mac=hmac.new(SESSION_SECRET,data.encode(),hashlib.sha256).hexdigest()
     return data+'.'+mac
 
-def get_sess(env):
-    token=_cookie(env,'cs_sess')
+def get_sess(env,cookie_name='cs_sess'):
+    token=_cookie(env,cookie_name)
     try:
         data,mac=token.rsplit('.',1)
         if not hmac.compare_digest(mac,hmac.new(SESSION_SECRET,data.encode(),hashlib.sha256).hexdigest()):return {}
@@ -144,11 +148,14 @@ def get_sess(env):
     except (ValueError,TypeError,KeyError):return {}
 
 def make_cookie(name,value,max_age=1200):
-    return ('Set-Cookie',f'{name}={value}; Path=/; HttpOnly; SameSite=Strict; Max-Age={max_age}')
+    secure='; Secure' if ON_HOSTING else ''
+    return ('Set-Cookie',f'{name}={value}; Path=/; HttpOnly; SameSite=Strict; Max-Age={max_age}{secure}')
 
 def is_local(env):return env.get('REMOTE_ADDR') in ('127.0.0.1','::1') and not ON_HOSTING
 
 def writable(env):return LOCAL_TRAINING and not PUBLIC_MODE and is_local(env)
+
+def citizen_demo_enabled(env):return writable(env) or HOSTED_DEMO
 
 def csrf(env,form):
     expected=_cookie(env,'cs_form')
@@ -446,7 +453,7 @@ def dispatch(env):
     if path=='/service' or path.startswith('/service/'):
         import service_portal
         return service_portal.handle(__import__(__name__),path,method,env,form)
-    if path=='/health':return response(200,json.dumps({'status':'ok','application':'CYBER SURAKSHA 2.0','mode':'public-read-only' if PUBLIC_MODE else 'local-training','government_approved':False}), 'application/json; charset=utf-8')
+    if path=='/health':return response(200,json.dumps({'status':'ok','application':'CYBER SURAKSHA 2.0','mode':'hosted-fictional-demo' if HOSTED_DEMO else 'public-read-only' if PUBLIC_MODE else 'local-training','government_approved':False}), 'application/json; charset=utf-8')
     if path=='/operations.html' and method=='GET':return response(200,nav_page(operations(env),'Security Operations'))
     if path=='/dashboard' and method=='GET':return response(200,nav_page(dashboard(),'Case Dashboard'))
     if path=='/incidents' and method=='GET':return redirect('/dashboard')
@@ -475,6 +482,9 @@ def dispatch(env):
     if path=='/awareness' and method=='GET':b,lang=awareness_page(params);return response(200,nav_page(b,'Awareness',lang))
     if path=='/training-showcase' and method=='GET':return response(200,nav_page(showcase(),'Case Showcase'))
     if path.startswith('/training-admin'):
+        if HOSTED_DEMO and path in ('/training-admin','/training-admin/login'):
+            # Legacy URL opens the *isolated demo staff* login, never the local training admin.
+            return redirect('/service/staff/login' if path.endswith('/login') else '/service/staff')
         if not writable(env) or not ADMIN_HASH:return bad(404,'Local administrator unavailable in public mode')
         if path=='/training-admin/login':
             if method=='GET':b,c=login_page(env);return response(200,nav_page(b,'Admin login'),headers=c)
