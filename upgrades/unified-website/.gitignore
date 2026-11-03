@@ -1,0 +1,9 @@
+instance/
+*.db
+*.db-wal
+*.db-shm
+__pycache__/
+*.pyc
+.env
+.local*
+.cyber_suraksha*backups/

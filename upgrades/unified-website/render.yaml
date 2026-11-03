@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: cyber-suraksha-2-0-unified-review
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn --bind 0.0.0.0:$PORT --workers 2 --timeout 30 app:app
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.11
+      - key: CS_PUBLIC_MODE
+        value: "1"
+      - key: CS_LOCAL_TRAINING
+        value: "0"
+      - key: CS_SESSION_SECRET
+        generateValue: true
