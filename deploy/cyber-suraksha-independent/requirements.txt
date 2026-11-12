@@ -1,4 +1,0 @@
-# Direct dependency versions tested with this R2 source package.
-# Transitive dependencies are resolved by pip, not fully hash-locked.
-fastapi==0.128.2
-uvicorn==0.48.0
