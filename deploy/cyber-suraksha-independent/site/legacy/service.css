@@ -1,0 +1,22 @@
+
+/* Independent service design enhancements */
+.service-links{display:flex;gap:20px;flex-wrap:wrap;border-top:1px solid #21434e;padding-top:16px;padding-bottom:28px;font-size:12px;color:#b2ccd2}
+.service-links a:hover{color:#65ffdb}
+.planner-layout{align-items:start}
+.planner-subtitle{color:#5b7881;font-size:15px;line-height:1.8;max-width:570px}
+.planner-assurance{margin-top:25px;color:#077c70;font-size:13px;font-weight:700;background:#e6f7f0;border-radius:10px;padding:13px 16px}
+.planner-assurance span:first-child{margin-right:8px}
+.planner-small{color:#657d85;font-size:12px;line-height:1.7;margin-top:15px}
+.planner-official{display:inline-flex;margin-top:10px;font-size:13px;font-weight:800;color:#057f71;text-decoration:underline;text-underline-offset:4px}
+.planner-card select{width:100%;min-height:46px;margin-bottom:17px}
+.planner-check{display:flex!important;align-items:flex-start;gap:10px;font-weight:500!important;line-height:1.5;cursor:pointer;margin:8px 0 20px!important}
+.planner-check input{width:17px;height:17px;margin-top:2px;accent-color:#008d80;flex-shrink:0}
+.planner-card button[type=submit]{width:100%}
+.planner-output{background:#eefaf6;border:1px solid #c6e7db;border-radius:10px;padding:20px;margin-top:20px;color:#123e3c}
+.planner-output h3{font-size:17px;margin:0 0 12px}
+.planner-output ol{padding-left:19px;font-size:13px;line-height:1.8}
+.planner-output a{font-weight:800;text-decoration:underline}
+.planner-output p{font-size:12px;line-height:1.6}
+.planner-download{color:#0d554c;border-color:#7fb1a5;margin-top:12px;width:100%}
+.pill{font-size:9px}
+@media(max-width:720px){.service-links{gap:12px}.planner-layout{gap:25px}}
