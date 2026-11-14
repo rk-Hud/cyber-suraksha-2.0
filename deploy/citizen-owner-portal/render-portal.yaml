@@ -1,0 +1,146 @@
+# SEPARATE owner/citizen portal. Review monthly costs BEFORE approving.
+# This file is intentionally under deploy/citizen-owner-portal/ in the unified repo.
+# First deployment: owner onboarding ONLY; public registration stays closed.
+services:
+  - type: web
+    name: cyber-suraksha-2-0-owner-portal
+    runtime: python
+    region: singapore
+    plan: 0.5c-512mb
+    branch: release/citizen-owner-portal-20261114
+    rootDir: deploy/citizen-owner-portal
+    buildCommand: pip install --disable-pip-version-check -r requirements.txt
+    preDeployCommand: flask --app app:create_app init-db
+    startCommand: gunicorn --config gunicorn.conf.py 'app:create_app()'
+    healthCheckPath: /healthz
+    autoDeployTrigger: 'off'
+    maxShutdownDelaySeconds: 40
+    envVars:
+      - key: PYTHON_VERSION
+        value: '3.12.12'
+      - key: GUNICORN_CMD_ARGS
+        value: ''
+      - key: PUBLIC_BASE_URL
+        fromService:
+          type: web
+          name: cyber-suraksha-2-0-owner-portal
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: DATABASE_URL
+        fromDatabase:
+          name: cyber-suraksha-2-0-owner-data
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: OTP_HMAC_KEY
+        generateValue: true
+      - key: TOTP_ENCRYPTION_KEY
+        generateValue: true
+      - key: ADMIN_EMAIL
+        value: ramakrishnajatoth2007@gmail.com
+      - key: PRIVATE_MODE
+        value: '0'
+      - key: PUBLIC_REGISTRATION
+        value: '0'
+      - key: FORCE_HTTPS
+        value: '1'
+      - key: TRUSTED_PROXY_HOPS
+        value: '1'
+      - key: LOGIN_RETENTION_DAYS
+        value: '30'
+      - key: MAIL_PROVIDER
+        value: resend
+      - key: MAIL_FROM
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+  - type: worker
+    name: cyber-suraksha-2-0-mail-worker
+    runtime: python
+    region: singapore
+    plan: 0.5c-512mb
+    branch: release/citizen-owner-portal-20261114
+    rootDir: deploy/citizen-owner-portal
+    buildCommand: pip install --disable-pip-version-check -r requirements.txt
+    startCommand: flask --app app:create_app dispatch-notifications --watch --interval 5
+    autoDeployTrigger: 'off'
+    maxShutdownDelaySeconds: 40
+    envVars:
+      - key: PYTHON_VERSION
+        value: '3.12.12'
+      - key: DATABASE_URL
+        fromDatabase:
+          name: cyber-suraksha-2-0-owner-data
+          property: connectionString
+      - key: PUBLIC_BASE_URL
+        fromService:
+          type: web
+          name: cyber-suraksha-2-0-owner-portal
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: SECRET_KEY
+        fromService:
+          type: web
+          name: cyber-suraksha-2-0-owner-portal
+          envVarKey: SECRET_KEY
+      - key: OTP_HMAC_KEY
+        fromService:
+          type: web
+          name: cyber-suraksha-2-0-owner-portal
+          envVarKey: OTP_HMAC_KEY
+      - key: TOTP_ENCRYPTION_KEY
+        fromService:
+          type: web
+          name: cyber-suraksha-2-0-owner-portal
+          envVarKey: TOTP_ENCRYPTION_KEY
+      - key: ADMIN_EMAIL
+        fromService:
+          type: web
+          name: cyber-suraksha-2-0-owner-portal
+          envVarKey: ADMIN_EMAIL
+      - key: PRIVATE_MODE
+        fromService:
+          type: web
+          name: cyber-suraksha-2-0-owner-portal
+          envVarKey: PRIVATE_MODE
+      - key: PUBLIC_REGISTRATION
+        fromService:
+          type: web
+          name: cyber-suraksha-2-0-owner-portal
+          envVarKey: PUBLIC_REGISTRATION
+      - key: FORCE_HTTPS
+        fromService:
+          type: web
+          name: cyber-suraksha-2-0-owner-portal
+          envVarKey: FORCE_HTTPS
+      - key: TRUSTED_PROXY_HOPS
+        fromService:
+          type: web
+          name: cyber-suraksha-2-0-owner-portal
+          envVarKey: TRUSTED_PROXY_HOPS
+      - key: LOGIN_RETENTION_DAYS
+        fromService:
+          type: web
+          name: cyber-suraksha-2-0-owner-portal
+          envVarKey: LOGIN_RETENTION_DAYS
+      - key: MAIL_PROVIDER
+        fromService:
+          type: web
+          name: cyber-suraksha-2-0-owner-portal
+          envVarKey: MAIL_PROVIDER
+      - key: MAIL_FROM
+        fromService:
+          type: web
+          name: cyber-suraksha-2-0-owner-portal
+          envVarKey: MAIL_FROM
+      - key: RESEND_API_KEY
+        fromService:
+          type: web
+          name: cyber-suraksha-2-0-owner-portal
+          envVarKey: RESEND_API_KEY
+databases:
+  - name: cyber-suraksha-2-0-owner-data
+    databaseName: cybersuraksha
+    user: cybersuraksha
+    region: singapore
+    plan: 0.1c-256mb
+    diskSizeGB: 1
+    ipAllowList: []

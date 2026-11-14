@@ -1,0 +1,53 @@
+# CYBER SURAKSHA 2.0: owner-only pilot, free hosting (not production).
+# Does NOT change the existing Unified Public Blueprint.
+# Enter Neon connection URL and Resend secrets ONLY in Render.
+services:
+  - type: web
+    name: cyber-suraksha-2-0-owner-pilot
+    runtime: python
+    region: singapore
+    plan: free
+    branch: release/free-owner-pilot-20261114
+    rootDir: deploy/citizen-owner-portal
+    buildCommand: pip install --disable-pip-version-check -r requirements.txt
+    # Free web instances have no durable disk and no permanent background worker.
+    # Repeated create_all is only a small private pilot bootstrap; use migrations before production.
+    startCommand: flask --app app:create_app init-db && gunicorn --config gunicorn.conf.py --workers 1 --threads 2 'app:create_app()'
+    healthCheckPath: /healthz
+    autoDeployTrigger: 'off'
+    envVars:
+      - key: PYTHON_VERSION
+        value: '3.12.12'
+      - key: GUNICORN_CMD_ARGS
+        value: ''
+      - key: PUBLIC_BASE_URL
+        fromService:
+          type: web
+          name: cyber-suraksha-2-0-owner-pilot
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: OTP_HMAC_KEY
+        generateValue: true
+      - key: TOTP_ENCRYPTION_KEY
+        generateValue: true
+      - key: ADMIN_EMAIL
+        value: ramakrishnajatoth2007@gmail.com
+      - key: PRIVATE_MODE
+        value: '1'
+      - key: PUBLIC_REGISTRATION
+        value: '0'
+      - key: FORCE_HTTPS
+        value: '1'
+      - key: TRUSTED_PROXY_HOPS
+        value: '1'
+      - key: LOGIN_RETENTION_DAYS
+        value: '30'
+      - key: MAIL_PROVIDER
+        value: resend
+      - key: MAIL_FROM
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false

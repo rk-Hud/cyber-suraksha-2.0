@@ -1,0 +1,46 @@
+{% set branding=branding|default({}) %}{% set brand_name=branding.get('title','CYBER SURAKSHA 2.0') %}
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#10282e">
+  <meta name="description" content="{{ t('meta_description') }}">
+  <meta name="author" content="Jatoth Ramakrishna">
+  <meta name="copyright" content="{{ year|default(2026) }} Jatoth Ramakrishna. Independently architected, developed, authored and owned by Jatoth Ramakrishna.">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <meta name="referrer" content="no-referrer">
+  {% block robots %}<meta name="robots" content="noindex,nofollow">{% endblock %}
+  <link rel="canonical" href="{{ site_origin|default(request.host_url.rstrip('/')) }}{{ request.path }}">
+  <title>{% block title %}{{ t('page_title') }}{% endblock %}</title>
+  <link rel="icon" type="image/svg+xml" href="{{ branding.get('logo_url',url_for('static', filename='img/cs-logo.svg')) }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/site.css') }}">
+  <script src="{{ url_for('static', filename='js/scam_checker.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/tools.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/portal_ui.js') }}" defer></script>
+  {% if reputation_enabled|default(false) %}<script src="{{ url_for('static', filename='js/reputation.js') }}" defer></script>{% endif %}
+</head>
+<body id="top">
+  <a class="skip-link" href="#main">{{ t('skip_content') }}</a>
+  <div class="service-strip"><div class="shell service-strip-inner"><span><span class="status-dot" aria-hidden="true"></span>{{ t('independent_notice') }}</span><span>{{ t('official_notice') }}</span></div></div>
+  <header class="site-header">
+    <div class="shell header-inner">
+      <a class="brand" href="{{ url_for('web.home',lang=lang) }}" aria-label="{{ brand_name }}"><img class="brand-mark" src="{{ branding.get('logo_url',url_for('static',filename='img/cs-logo.svg')) }}" width="48" height="48" alt=""><span><strong class="brand-title">{{ brand_name }}</strong><small>{{ branding.get('tagline',{}).get(lang,t('brand_descriptor')) }}</small></span></a>
+      <button class="menu-toggle" id="menu-toggle" type="button" aria-expanded="false" aria-controls="main-navigation">{{ t('menu') }} <span aria-hidden="true">☰</span></button>
+      <nav class="main-navigation" id="main-navigation" aria-label="{{ t('menu') }}">
+        <a href="{{ url_for('web.home',lang=lang) }}">{{ t('nav_home') }}</a><a href="{{ url_for('web.home',lang=lang) }}#checker">{{ t('nav_checker') }}</a><a href="{{ url_for('web.home',lang=lang) }}#planner">{{ t('nav_planner') }}</a><a href="{{ url_for('web.cases',lang=lang) }}">{{ t('nav_citizen') }}</a><a href="{{ url_for('web.home',lang=lang) }}#training">{{ t('nav_training') }}</a><a href="{{ url_for('web.home',lang=lang) }}#resources">{{ t('nav_resources') }}</a><a href="{{ url_for('web.home',lang=lang) }}#privacy">{{ t('nav_privacy') }}</a>
+      </nav>
+      <div class="header-actions"><label class="language-control" for="language-select"><span class="sr-only">{{ t('language') }}</span><select id="language-select" aria-describedby="language-note"><option value="en" lang="en" {% if lang=='en' %}selected{% endif %}>English</option><option value="hi" lang="hi" {% if lang=='hi' %}selected{% endif %}>हिन्दी</option><option value="te" lang="te" {% if lang=='te' %}selected{% endif %}>తెలుగు</option></select></label><span id="language-note" class="sr-only">{{ t('language_notice') }}</span><a href="{{ url_for('web.home',lang=lang) }}#help" class="button help-button">{{ t('get_help') }}</a></div>
+    </div>
+  </header>
+  {% if current_user %}<div class="account-strip"><div class="shell account-strip-inner"><span>{{ t('session_identity') }} <strong>{{ current_user.name }}</strong></span><div><a href="{{ url_for('web.cases',lang=lang) }}">{{ t('nav_account') }}</a>{% if current_user.role=='owner' %}<a href="{{ url_for('web.admin_dashboard',lang=lang) }}">{{ t('nav_admin') }}</a>{% endif %}<form action="{{ url_for('web.logout',lang=lang) }}" method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="plain-button" type="submit">{{ t('sign_out') }}</button></form></div></div></div>{% endif %}
+  {% set advisory=advisory|default(None) %}{% if advisory and advisory.active %}<aside class="advisory-banner{% if advisory.priority=='high' %} advisory-high{% endif %}" role="status"><div class="shell"><strong>{{ t('advisory_high') if advisory.priority=='high' else t('advisory') }}</strong><span>{{ advisory.text[lang] }}</span></div></aside>{% endif %}
+  <main id="main">
+    {% if error_code %}<div class="shell message-banner message-error" role="alert"><strong>{{ t('form_error_title') }}</strong><p>{{ t(error_code) }}</p></div>{% endif %}
+    {% if notice_code %}<div class="shell message-banner message-notice" role="status"><strong>{{ t('notice_title') }}</strong><p>{{ t(notice_code) }}</p></div>{% endif %}
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="site-footer"><div class="shell footer-main"><div><strong class="footer-brand">{{ brand_name }}</strong><p>{{ t('footer_mission') }}</p></div><div class="footer-links"><a href="{{ url_for('web.home',lang=lang) }}#privacy">{{ t('nav_privacy') }}</a><a href="{{ url_for('web.admin_login',lang=lang) }}">{{ t('admin_sign_in') }}</a><a href="/SECURITY.md">{{ t('security_policy') }}</a><a href="/humans.txt">{{ t('humans_link') }}</a><a href="#top">{{ t('back_top') }} ↑</a></div></div><div class="shell footer-legal"><p>© {{ year|default(2026) }} Jatoth Ramakrishna. {{ t('footer_rights') }} {{ t('footer_ownership') }}</p><p>{{ t('footer_no_affiliation') }}</p></div></footer>
+</body>
+</html>

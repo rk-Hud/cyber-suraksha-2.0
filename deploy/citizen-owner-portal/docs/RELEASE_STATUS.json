@@ -1,0 +1,39 @@
+{
+  "record_kind": "prepared_deployment_configuration",
+  "date": "2026-11-13",
+  "owner": "Jatoth Ramakrishna",
+  "repository_target": "https://github.com/rk-Hud/cybersuraksha2.0",
+  "repository_publication_status": "handled separately; verify the actual GitHub result",
+  "deployment_status": "not established by this source preparation",
+  "requested_access": "public",
+  "configured_private_mode": false,
+  "configured_public_registration": true,
+  "protected_features": [
+    "owner-only administration with recent TOTP",
+    "citizen-owned support cases",
+    "email OTP verification",
+    "CSRF/origin protection",
+    "rate limits"
+  ],
+  "mail_provider_configuration": "verified sender and actual private credentials still required",
+  "openai_key_configuration": "not configured by this source; no OpenAI API-backed feature enabled",
+  "render": {
+    "workspace": "RK",
+    "region": "singapore",
+    "branch": "main",
+    "root_directory": ".",
+    "web_service_name": "cybersuraksha2.0",
+    "worker_service_name": "cybersuraksha2-notifications",
+    "database_name": "cybersuraksha2-data",
+    "estimated_base_monthly_usd": 20.3,
+    "actual_resource_plan_applied": "verify separately"
+  },
+  "source_verification": {
+    "inherited_python_tests_passed": 59,
+    "inherited_portal_node_tests_passed": 50,
+    "dependency_packages_audited": 22,
+    "known_vulnerabilities_at_audit": 0,
+    "live_email_delivery": "unverified",
+    "browser_visual_qa": "unverified"
+  }
+}
