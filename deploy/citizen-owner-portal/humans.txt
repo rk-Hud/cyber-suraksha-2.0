@@ -1,0 +1,19 @@
+CYBER SURAKSHA 2.0
+
+Owner, author and sole maintainer: Jatoth Ramakrishna
+Project: https://github.com/rk-Hud/cybersuraksha2.0
+Purpose: Public cybersecurity awareness and independent digital-safety support.
+
+CYBER SURAKSHA 2.0 is independently architected, developed, authored and owned
+by Jatoth Ramakrishna. No college, university, employer, institutional partner,
+government agency or corporate sponsor supports, funds or owns this project.
+Links to official agencies are references, not endorsements or affiliations.
+
+Copyright (c) 2026 Jatoth Ramakrishna. All rights reserved in original project
+content and code, subject to any applicable repository license. Third-party
+software, services and references retain their respective owners' rights.
+
+Languages: English, Hindi, Telugu
+Stack: Python, Flask, PostgreSQL, JavaScript, HTML, CSS
+Security disclosure: /SECURITY.md
+Last updated: 13 November 2026

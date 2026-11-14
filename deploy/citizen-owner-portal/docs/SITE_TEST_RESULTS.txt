@@ -1,0 +1,59 @@
+✔ An exact HTTPS catalogue hostname should be recognised without treating that recognition as a safety verdict. (6.161464ms)
+✔ A known hostname remains recognised on an ordinary path; the path contents are not checked live. (2.121423ms)
+✔ Case and a DNS trailing dot should normalise to the same exact hostname boundary. (0.210468ms)
+✔ The letters rn can visually imitate m; this is a lookalike finding, not proof of a live malicious site. (1.687358ms)
+✔ The digit zero can imitate the o in a familiar brand domain. (3.558973ms)
+✔ The first letter is Cyrillic U+0430, not Latin a; URL normalisation must not make this an exact catalogue match. (7.745235ms)
+✔ The same Unicode lookalike pasted in its ASCII xn-- form should receive equivalent scrutiny. (0.315085ms)
+✔ A familiar official domain at the start of an unrelated hostname does not establish ownership. (1.256628ms)
+✔ The name before @ is URL user information, while the actual destination is evil.example. (0.672776ms)
+✔ A different subject containing a common brand word should not automatically be declared an impersonation attempt. (0.784014ms)
+✔ A hostname absent from the finite catalogue is unverified rather than known safe or automatically unsafe. (0.934681ms)
+✔ This reproduced SMS has concealed redirect destinations; the local checker should explain that limitation rather than assert the text is real or fraudulent. (0.181634ms)
+✔ A recognised domain does not cancel the explicit unencrypted HTTP transport warning. (0.164779ms)
+✔ An HTTP URL must receive a prominent transport warning regardless of brand recognition. (0.232741ms)
+✔ The exact national e-challan hostname is within the configured official domain boundary. (0.153602ms)
+✔ E-challan branding outside parivahan.gov.in requires an explicit impersonation finding. (0.157157ms)
+✔ Government wording embedded in a different hostname must not pass the official-domain boundary check. (1.240683ms)
+✔ A positive request for a secret is a warning even when no URL is present. (0.611804ms)
+✔ Ordinary English safety advice must not be inverted into a request for credentials. (0.433674ms)
+✔ Hindi advice not to share an OTP is not a request to disclose it. (0.361776ms)
+✔ Telugu advice not to share an OTP should remain a negative instruction. (0.114323ms)
+✔ A documentation-only numeric address still exercises the numeric-host and HTTP structural rules without accessing a real service. (0.308106ms)
+✔ WHATWG URL normalisation turns the numeric IPv4 form into an address; string-only dotted-quad matching would miss it. (0.216036ms)
+✔ A zero-width character should be explained even when removing it reveals a recognised hostname. (0.182094ms)
+✔ A malformed percent escape must not abort local analysis of the remaining valid address. (0.296117ms)
+✔ all reference domains and their actual subdomains have context without blanket safety claims (6.194733ms)
+✔ a genuine host does not cancel dangerous instructions or HTTP (0.161353ms)
+✔ all t.jio SMS URLs remain hidden destinations rather than blanket fraud labels (0.119451ms)
+✔ near spelling is a qualified warning; common brand words do not cause blanket findings (0.734409ms)
+✔ Unicode and ASCII-punycode lookalikes receive the same strong finding (2.171028ms)
+✔ short reference names use visual confusables without broad typo accusations (0.447275ms)
+✔ normal Indic joiners do not become a fraud warning (0.186923ms)
+✔ the checker does not mistake an email address for a website (0.345522ms)
+✔ numeric, IPv6 and malformed address structures are handled without opening them (0.619715ms)
+✔ an outer reference hostname does not verify a nested redirect destination (0.38408ms)
+✔ deduplication and the score ceiling are stable across repeated links (1.488057ms)
+✔ input validation uses Unicode code points before bounded analysis (1.345712ms)
+✔ result data contains hostnames only, without pasted paths, queries, credentials or message text (0.455729ms)
+✔ warning rules, verdicts and hostname explanations are complete in all three languages (4.699286ms)
+✔ en: UI renders context and HTTP warning, then clears private input and stale results (6.934441ms)
+✔ hi: UI renders context and HTTP warning, then clears private input and stale results (2.242316ms)
+✔ te: UI renders context and HTTP warning, then clears private input and stale results (2.53637ms)
+✔ source has no transport, telemetry, browser storage or execution primitives (0.53637ms)
+en: 5 planner categories, loss flag, local downloads and invalidation, removed SOC form tolerated, assistant4, quiz5+restart passed
+hi: 5 planner categories, loss flag, local downloads and invalidation, removed SOC form tolerated, assistant4, quiz5+restart passed
+te: 5 planner categories, loss flag, local downloads and invalidation, removed SOC form tolerated, assistant4, quiz5+restart passed
+✔ tests/tools.test.cjs (42.14743ms)
+✔ the resource directory starts collapsed on an ordinary visit (2.78856ms)
+✔ resource navigation opens the official directory (1.194544ms)
+✔ direct links and browser hash changes reveal the requested directory (3.942503ms)
+✔ citizen links and non-link clicks do not reveal the resource directory (1.402207ms)
+ℹ tests 48
+ℹ suites 0
+ℹ pass 48
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 287.088272

@@ -1,0 +1,142 @@
+# Public deployment requested by the owner; supply the verified mail sender privately.
+services:
+  - type: web
+    name: cybersuraksha2.0
+    runtime: python
+    region: singapore
+    plan: 0.5c-512mb
+    branch: main
+    buildCommand: pip install --disable-pip-version-check -r requirements.txt
+    preDeployCommand: flask --app app:create_app init-db
+    startCommand: gunicorn --config gunicorn.conf.py 'app:create_app()'
+    healthCheckPath: /healthz
+    autoDeployTrigger: 'off'
+    maxShutdownDelaySeconds: 40
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.12
+      - key: GUNICORN_CMD_ARGS
+        value: ''
+      - key: PUBLIC_BASE_URL
+        fromService:
+          type: web
+          name: cybersuraksha2.0
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: DATABASE_URL
+        fromDatabase:
+          name: cybersuraksha2-data
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: OTP_HMAC_KEY
+        generateValue: true
+      - key: TOTP_ENCRYPTION_KEY
+        generateValue: true
+      - key: ADMIN_EMAIL
+        value: ramakrishnajatoth2007@gmail.com
+      - key: PRIVATE_MODE
+        value: '0'
+      - key: PUBLIC_REGISTRATION
+        value: '1'
+      - key: FORCE_HTTPS
+        value: '1'
+      - key: TRUSTED_PROXY_HOPS
+        value: '1'
+      - key: LOGIN_RETENTION_DAYS
+        value: '30'
+      - key: MAIL_PROVIDER
+        value: resend
+      - key: MAIL_FROM
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+  - type: worker
+    name: cybersuraksha2-notifications
+    runtime: python
+    region: singapore
+    plan: 0.5c-512mb
+    branch: main
+    buildCommand: pip install --disable-pip-version-check -r requirements.txt
+    startCommand: flask --app app:create_app dispatch-notifications --watch --interval 5
+    autoDeployTrigger: 'off'
+    maxShutdownDelaySeconds: 40
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.12
+      - key: DATABASE_URL
+        fromDatabase:
+          name: cybersuraksha2-data
+          property: connectionString
+      - key: PUBLIC_BASE_URL
+        fromService:
+          type: web
+          name: cybersuraksha2.0
+          envVarKey: PUBLIC_BASE_URL
+      - key: SECRET_KEY
+        fromService:
+          type: web
+          name: cybersuraksha2.0
+          envVarKey: SECRET_KEY
+      - key: OTP_HMAC_KEY
+        fromService:
+          type: web
+          name: cybersuraksha2.0
+          envVarKey: OTP_HMAC_KEY
+      - key: TOTP_ENCRYPTION_KEY
+        fromService:
+          type: web
+          name: cybersuraksha2.0
+          envVarKey: TOTP_ENCRYPTION_KEY
+      - key: ADMIN_EMAIL
+        fromService:
+          type: web
+          name: cybersuraksha2.0
+          envVarKey: ADMIN_EMAIL
+      - key: PRIVATE_MODE
+        fromService:
+          type: web
+          name: cybersuraksha2.0
+          envVarKey: PRIVATE_MODE
+      - key: PUBLIC_REGISTRATION
+        fromService:
+          type: web
+          name: cybersuraksha2.0
+          envVarKey: PUBLIC_REGISTRATION
+      - key: FORCE_HTTPS
+        fromService:
+          type: web
+          name: cybersuraksha2.0
+          envVarKey: FORCE_HTTPS
+      - key: TRUSTED_PROXY_HOPS
+        fromService:
+          type: web
+          name: cybersuraksha2.0
+          envVarKey: TRUSTED_PROXY_HOPS
+      - key: LOGIN_RETENTION_DAYS
+        fromService:
+          type: web
+          name: cybersuraksha2.0
+          envVarKey: LOGIN_RETENTION_DAYS
+      - key: MAIL_PROVIDER
+        fromService:
+          type: web
+          name: cybersuraksha2.0
+          envVarKey: MAIL_PROVIDER
+      - key: MAIL_FROM
+        fromService:
+          type: web
+          name: cybersuraksha2.0
+          envVarKey: MAIL_FROM
+      - key: RESEND_API_KEY
+        fromService:
+          type: web
+          name: cybersuraksha2.0
+          envVarKey: RESEND_API_KEY
+databases:
+  - name: cybersuraksha2-data
+    databaseName: cybersuraksha
+    user: cybersuraksha
+    region: singapore
+    plan: 0.1c-256mb
+    diskSizeGB: 1
+    ipAllowList: []

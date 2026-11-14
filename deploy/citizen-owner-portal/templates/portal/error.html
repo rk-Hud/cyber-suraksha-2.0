@@ -1,0 +1,3 @@
+{% extends 'base.html' %}
+{% block title %}{{ t('not_available') }} · CYBER SURAKSHA 2.0{% endblock %}
+{% block content %}<section class="shell section auth-layout auth-compact"><div class="auth-intro"><p class="eyebrow">CYBER SURAKSHA 2.0</p><h1>{{ t('not_available') }}</h1><p>{{ t('msg_request_failed') }}</p><div class="button-row"><a class="button button-dark" href="{{ url_for('web.home',lang=lang) }}">{{ t('home_link') }} →</a>{% if current_user %}<a class="button button-secondary" href="{{ url_for('web.cases',lang=lang) }}">{{ t('cases_title') }}</a>{% endif %}</div>{% if request_id|default(None) %}<p class="field-hint">{{ t('request_id') }}: <code>{{ request_id }}</code></p>{% endif %}</div></section>{% endblock %}
