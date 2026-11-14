@@ -1,0 +1,158 @@
+
+{% extends "base.html" %}
+{% block title %}Report · Cyber Suraksha{% endblock %}
+
+{% block content %}
+
+<div class="page-title">
+  <p class="eyebrow">CITIZEN INTAKE</p>
+  <h1>Record a cyber incident</h1>
+  <p class="lead">
+    Use fictional details for testing.
+    {% if public_demo %}
+      Public submission is disabled.
+      Review fictional examples in the incident register.
+    {% else %}
+      This form saves only to the local SQLite database
+      on this computer.
+    {% endif %}
+  </p>
+</div>
+
+{% if public_demo %}
+
+<div class="privacy" role="status">
+  <strong>Public demonstration:</strong>
+  Incident submission is disabled for privacy.
+  For real cybercrime in India, use the official
+  cybercrime.gov.in portal or call 1930 for financial fraud.
+</div>
+
+<section class="form-card">
+  <h2>Report a Real Cybercrime in India</h2>
+
+  <p>
+    CYBER SURAKSHA 2.0 is an educational demonstration.
+    For an actual cybercrime complaint, use the official
+    Government of India reporting portal.
+  </p>
+
+  <a class="button"
+     href="https://cybercrime.gov.in/"
+     target="_blank"
+     rel="noopener noreferrer">
+    Report Cybercrime — Official Portal
+  </a>
+
+  <p>
+    Financial cyber fraud? Call
+    <a href="tel:1930"><strong>1930</strong></a>
+    immediately and contact your bank using its
+    official customer support channel.
+  </p>
+
+  <p>
+    Do not enter personal information, OTPs,
+    UPI PINs, passwords or real evidence on this demo.
+  </p>
+</section>
+
+{% endif %}
+
+
+{% if not public_demo %}
+
+<form method="post" class="form-card">
+
+  <div class="form-grid">
+
+    <label>
+      Incident category
+      <select name="incident_type" required>
+        {% for v in ["Phishing / fake link","UPI / payment fraud","Identity theft","Investment / job scam","Social media impersonation","Other"] %}
+        <option {% if form.get('incident_type')==v %}selected{% endif %}>{{ v }}</option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label>
+      Contact channel
+      <select name="channel" required>
+        {% for v in ["SMS","Phone call","WhatsApp","Email","UPI app","Social media","Website","Other"] %}
+        <option {% if form.get('channel')==v %}selected{% endif %}>{{ v }}</option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label>
+      Date incident occurred
+      <input type="date"
+             name="incident_date"
+             value="{{ form.get('incident_date','') }}"
+             required>
+    </label>
+
+    <label>
+      Amount involved (₹)
+      <input type="number"
+             min="0"
+             max="100000000"
+             step="0.01"
+             name="amount"
+             value="{{ form.get('amount','0') }}">
+    </label>
+
+    <label>
+      Your display name
+      <input name="contact_name"
+             maxlength="80"
+             value="{{ form.get('contact_name','') }}"
+             placeholder="Example: Demo User"
+             required>
+    </label>
+
+    <label>
+      Contact number (test only)
+      <input name="contact_phone"
+             maxlength="20"
+             value="{{ form.get('contact_phone','') }}"
+             placeholder="Example: 9000000000"
+             required>
+    </label>
+
+  </div>
+
+  <label>
+    What happened?
+    <textarea name="description"
+              minlength="15"
+              maxlength="2000"
+              rows="5"
+              placeholder="Describe a fictional incident. Do not include passwords, OTPs, PINs or card details."
+              required>{{ form.get('description','') }}</textarea>
+  </label>
+
+  <label>
+    Evidence note (do not upload sensitive files)
+    <textarea name="evidence_note"
+              rows="3"
+              maxlength="1000"
+              placeholder="Example: Synthetic screenshot CS-DEMO-01">{{ form.get('evidence_note','') }}</textarea>
+  </label>
+
+  <div class="privacy">
+    <strong>Privacy and safety:</strong>
+    Use fictional training data only.
+    This application has no production authentication,
+    secure evidence storage or government integration.
+  </div>
+
+  <button class="button" type="submit">
+    Save local report →
+  </button>
+
+</form>
+
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,16 @@
+# CYBER SURAKSHA 2.0 — independently operated awareness website.
+# Public educational preview only. No real citizen intake or accounts.
+projects:
+  - name: CYBER SURAKSHA 2.0 - Unified Public
+    environments:
+      - name: public-preview
+        services:
+          - type: web
+            name: cyber-suraksha-2-0-unified-public
+            runtime: python
+            plan: free
+            region: singapore
+            buildCommand: pip install -r deploy/cyber-suraksha-independent/requirements.txt
+            startCommand: cd deploy/cyber-suraksha-independent && uvicorn main:app --host 0.0.0.0 --port $PORT --no-access-log
+            healthCheckPath: /api/v1/health
+            autoDeployTrigger: 'off'

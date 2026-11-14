@@ -1,0 +1,3 @@
+{% extends "base.html" %}{% block content %}
+<div class="success-card"><div class="success-icon">✓</div><p class="eyebrow">LOCAL RECORD CREATED</p><h1>Report saved</h1><p>Your prototype reference is:</p><strong class="reference">{{ reference }}</strong><p>This is an internal demonstration reference, not a police complaint number or government acknowledgement.</p><a class="button" href="{{ url_for('incident_detail', reference=reference) }}">View record</a></div>
+{% endblock %}

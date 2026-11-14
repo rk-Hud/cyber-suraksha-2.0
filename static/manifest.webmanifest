@@ -1,0 +1,24 @@
+{
+  "name": "CYBER SURAKSHA 2.0 — Digital Safety Demo",
+  "short_name": "Cyber Suraksha",
+  "description": "Educational cyber-fraud awareness and SOC simulation (read-only public demo).",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#10243a",
+  "theme_color": "#10243a",
+  "icons": [
+    {
+      "src": "/static/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

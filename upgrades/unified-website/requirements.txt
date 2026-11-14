@@ -1,0 +1,3 @@
+# Local use does not require installing any third-party packages.
+# For approved independent WSGI hosting, use gunicorn via this requirement:
+gunicorn==23.0.0

@@ -1,0 +1,5 @@
+{% extends "base.html" %}{% block title %}Incident register · Cyber Suraksha{% endblock %}
+{% block content %}<div class="page-title"><p class="eyebrow">LOCAL DATABASE</p><h1>Incident register</h1><p class="lead">Synthetic sample cases and reports submitted on this device.</p></div>
+<div class="table-wrap"><label class="filter-label" for="incident-search">Filter synthetic incidents <input data-incident-filter id="incident-search" type="search" placeholder="Search reference or type" autocomplete="off"></label><table><thead><tr><th>Reference</th><th>Category</th><th>Channel</th><th>Incident date</th><th>Amount</th><th>Status</th><th>Type</th></tr></thead><tbody>
+{% for item in incidents %}<tr data-incident-row><td><a href="{{ url_for('incident_detail', reference=item.reference) }}">{{ item.reference }}</a></td><td>{{ item.incident_type }}</td><td>{{ item.channel }}</td><td>{{ item.incident_date }}</td><td>₹{{ "%.2f"|format(item.amount) }}</td><td><span class="pill">{{ item.status }}</span></td><td>{% if item.is_demo %}<span class="demo">SYNTHETIC</span>{% else %}Local entry{% endif %}</td></tr>{% endfor %}
+</tbody></table></div>{% endblock %}
