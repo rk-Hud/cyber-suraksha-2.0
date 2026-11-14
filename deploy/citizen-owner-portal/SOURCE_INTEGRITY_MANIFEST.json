@@ -105,7 +105,7 @@
   },
   {
     "path": "portal/security.py",
-    "sha256": "a67b2b11becea8173b7c1f246d949d84035f6e05dd82243398e587ca7bbac8ee"
+    "sha256": "d9ea60bb14b2e058a3f8bb42cfac980f6f7190783477d97da721ecf68ed66e7b"
   },
   {
     "path": "pytest.ini",

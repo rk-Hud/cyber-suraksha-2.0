@@ -33,13 +33,37 @@ def csrf_token():
 
 
 def csrf_check():
+    """Reject unsafe requests, logging only non-sensitive failure categories.
+
+    Never log session cookies, form tokens, user-identifying inputs or secrets.
+    """
     token = request.headers.get("X-CSRF-Token") if request.is_json else request.form.get("csrf_token", "")
-    if not isinstance(token, str) or len(token) != 64 or not hmac.compare_digest(token, csrf_token()):
+    has_cookie = bool(request.cookies.get(current_app.config["SESSION_COOKIE_NAME"], ""))
+    has_session = bool(getattr(g, "browser", None))
+    if not isinstance(token, str) or len(token) != 64:
+        current_app.logger.warning(
+            "csrf_rejected reason=form_token_missing_or_wrong_length cookie_present=%s session_loaded=%s",
+            has_cookie, has_session,
+        )
+        raise PortalError("msg_csrf_invalid", 403)
+    if not hmac.compare_digest(token, csrf_token()):
+        current_app.logger.warning(
+            "csrf_rejected reason=token_mismatch cookie_present=%s session_loaded=%s",
+            has_cookie, has_session,
+        )
         raise PortalError("msg_csrf_invalid", 403)
     origin = request.headers.get("Origin")
     if origin and origin.rstrip("/") not in current_app.config["ALLOWED_ORIGINS"]:
+        current_app.logger.warning(
+            "csrf_rejected reason=origin_mismatch cookie_present=%s session_loaded=%s",
+            has_cookie, has_session,
+        )
         raise PortalError("msg_csrf_invalid", 403)
     if request.headers.get("Sec-Fetch-Site") == "cross-site":
+        current_app.logger.warning(
+            "csrf_rejected reason=cross_site_fetch cookie_present=%s session_loaded=%s",
+            has_cookie, has_session,
+        )
         raise PortalError("msg_csrf_invalid", 403)
 
 
