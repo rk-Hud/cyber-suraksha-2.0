@@ -37,15 +37,15 @@
   },
   {
     "path": "data/ui_en.json",
-    "sha256": "3c8725313c635485e482caaa37ef4cb01608b5d0eea871262cdc46df74f0ddd4"
+    "sha256": "a785559580620c5aabd8d6d213707ef4fa448914bcf0b165e4bb189a026a7442"
   },
   {
     "path": "data/ui_hi.json",
-    "sha256": "ae03b7eb8154ffa76ecda4cab0271f56360151594ff6cac767564985bec3c1f5"
+    "sha256": "3e8b70dbf58a1cd4ec7414b51717313ff91f325a3228cbb5fa56fb2cb151b97b"
   },
   {
     "path": "data/ui_te.json",
-    "sha256": "46bc297601ff9747e38bf3fecb7e1ec3999c4309a6d5a96813962c5efe5d3fac"
+    "sha256": "a9f095f37e0289d51e11b742c5d05649ad80c328076c85842d03457e83cea0db"
   },
   {
     "path": "docs/DEPENDENCY_AUDIT.json",
@@ -101,7 +101,7 @@
   },
   {
     "path": "portal/routes.py",
-    "sha256": "09d424a967d668940b6452b4514758bf0426c8ee221d8a7dc5f1204166f0c67f"
+    "sha256": "9e8ff16bddd7093e87fc1c78bf505c9c6defac1a477e45e2b0f55180d1b484ad"
   },
   {
     "path": "portal/security.py",
@@ -165,7 +165,7 @@
   },
   {
     "path": "templates/portal/admin_dashboard.html",
-    "sha256": "e35a84c5954c8e062d491e77cb26880f691d9b8d488a080450c23462301af8ea"
+    "sha256": "395051b526a5e8a96cfd4db5a552cf712b16587b6c1efe42675abd068772230d"
   },
   {
     "path": "templates/portal/admin_mfa.html",

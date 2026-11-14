@@ -431,5 +431,10 @@
   "reputation_check": "Check current reputation",
   "reputation_wait": "Checking the threat list…",
   "reputation_unavailable": "The reputation service is temporarily unavailable. Local findings remain available.",
-  "msg_registration_closed": "Public registration is currently closed. Existing accounts can sign in; owner setup is limited to the configured administrator email."
+  "msg_registration_closed": "Public registration is currently closed. Existing accounts can sign in; owner setup is limited to the configured administrator email.",
+  "pilot_manual_delivery_heading": "Owner-only pilot: manual email queue",
+  "pilot_manual_delivery_explanation": "No background worker is running. After authenticator verification, send at most one due case-update email per click. Delivery is not automatic. Never use this pilot to collect real complaints.",
+  "pilot_send_one_notification": "Send one queued email",
+  "msg_manual_notification_sent": "One queued notification was sent.",
+  "msg_manual_notification_empty": "No notification was delivered. Check the queue and provider configuration."
 }

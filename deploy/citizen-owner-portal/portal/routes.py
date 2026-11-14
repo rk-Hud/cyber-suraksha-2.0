@@ -19,7 +19,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from .mail import DeliveryError
+from .mail import DeliveryError, dispatch_due
 from .models import AuditEvent, BrowserSession, CaseEvent, Challenge, Complaint, LoginEvent, Notification, SiteContent, User
 from .security import PortalError, csrf_token, digest, login_event, rate_limit, require_user, rotate_session, valid_https_url
 
@@ -540,6 +540,20 @@ def admin_dashboard(lang):
     recent = g.db.scalars(select(Complaint).order_by(Complaint.updated_at.desc()).limit(100)).all()
     logins = g.db.scalars(select(LoginEvent).order_by(LoginEvent.created_at.desc()).limit(100)).all()
     return page("portal/admin_dashboard.html", stats=stats, cases=recent, login_events=logins)
+
+
+@web.post("/<any(en,hi,te):lang>/admin/notifications/send-one")
+@require_user(owner=True)
+def admin_send_one_notification(lang):
+    """Explicit owner-MFA action. Pilot has no background mail worker."""
+    values = form("intent")
+    if values["intent"] != "send_one":
+        raise PortalError("msg_invalid_form", 422)
+    rate_limit("owner:manual-email", limit=6, period=300, identity=g.current_user.id)
+    # Close the request transaction before delivery, which leases a job in its own session.
+    g.db.commit()
+    sent = dispatch_due(current_app, maximum=1)
+    return notice("msg_manual_notification_sent" if sent else "msg_manual_notification_empty", "web.admin_dashboard")
 
 
 @web.get("/<any(en,hi,te):lang>/admin/users")
