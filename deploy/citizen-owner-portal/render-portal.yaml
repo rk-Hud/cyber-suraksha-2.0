@@ -75,7 +75,7 @@ services:
         fromService:
           type: web
           name: cyber-suraksha-2-0-owner-portal
-          envVarKey: PUBLIC_BASE_URL
+          envVarKey: RENDER_EXTERNAL_URL
       - key: SECRET_KEY
         fromService:
           type: web
