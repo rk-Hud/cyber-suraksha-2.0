@@ -32,6 +32,46 @@ def csrf_token():
     return digest(g.raw_session, purpose="csrf")
 
 
+def _parse_origin(value):
+    """Canonical (scheme, hostname, effective port); never accept opaque origins."""
+    if not isinstance(value, str) or len(value) > 512 or any(ord(c) < 33 for c in value):
+        return None
+    try:
+        parsed = urlsplit(value)
+        if parsed.scheme not in ("http", "https") or not parsed.hostname:
+            return None
+        if parsed.username or parsed.password or parsed.query or parsed.fragment:
+            return None
+        if parsed.path not in ("", "/"):
+            return None
+        port = parsed.port
+        host = parsed.hostname.lower()
+        if not host or host.endswith("."):
+            return None
+        return (parsed.scheme.lower(), host, port or (443 if parsed.scheme == "https" else 80))
+    except (ValueError, TypeError):
+        return None
+
+
+def _valid_request_origin(value):
+    """Allow only configured origins or HTTPS same-origin on a trusted host."""
+    submitted = _parse_origin(value)
+    if submitted is None:
+        return False
+    allowed = {_parse_origin(item) for item in current_app.config["ALLOWED_ORIGINS"]}
+    if submitted in allowed:
+        return True
+    # Render's TLS proxy may publish a host different from a stale canonical
+    # URL. An exact same-origin request to a configured trusted host is safe.
+    effective = _parse_origin(request.host_url)
+    trusted_hosts = {host.lower() for host in current_app.config.get("TRUSTED_HOSTS", [])}
+    return bool(
+        submitted[0] == "https"
+        and effective == submitted
+        and effective[1] in trusted_hosts
+    )
+
+
 def csrf_check():
     """Reject unsafe requests, logging only non-sensitive failure categories.
 
@@ -53,10 +93,15 @@ def csrf_check():
         )
         raise PortalError("msg_csrf_invalid", 403)
     origin = request.headers.get("Origin")
-    if origin and origin.rstrip("/") not in current_app.config["ALLOWED_ORIGINS"]:
+    if origin and not _valid_request_origin(origin):
+        parsed_origin = _parse_origin(origin)
+        # Hostnames/schemes only; never log origin text, tokens, cookie values,
+        # email addresses or request bodies. Restrict log fields to safe data.
         current_app.logger.warning(
-            "csrf_rejected reason=origin_mismatch cookie_present=%s session_loaded=%s",
+            "csrf_rejected reason=origin_mismatch cookie_present=%s session_loaded=%s origin_scheme=%s origin_host=%s",
             has_cookie, has_session,
+            parsed_origin[0] if parsed_origin else "invalid",
+            parsed_origin[1][:120] if parsed_origin else "invalid",
         )
         raise PortalError("msg_csrf_invalid", 403)
     if request.headers.get("Sec-Fetch-Site") == "cross-site":
