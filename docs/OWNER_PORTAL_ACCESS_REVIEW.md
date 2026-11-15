@@ -1,3 +1,7 @@
+![Owner-access control diagram](assets/owner-access-flow.svg)
+
+[Documentation center](README.md) · [Source](../deploy/citizen-owner-portal/) · [Security policy](../SECURITY.md) · [Release checklist](RELEASE_READINESS.md)
+
 # Owner portal — access review and release controls
 
 **Project:** CYBER SURAKSHA 2.0  
