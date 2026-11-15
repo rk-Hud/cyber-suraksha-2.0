@@ -1,40 +1,50 @@
-# Testing and Quality Assurance
+# Testing and quality assurance
 
-## Automated tests
+[Documentation center](README.md) · [Manual checklist](../MANUAL_TEST_CHECKLIST.md) · [Release readiness](RELEASE_READINESS.md)
 
-Run from the repository root after installing dependencies:
+A passing result applies only to the **exact code revision, dependency set and execution environment** tested. Repository test files, inherited test logs or old documentation must not be reported as current passing evidence without rerunning tests.
+
+## Test suites by component
+
+| Scope | Path | Purpose |
+| --- | --- | --- |
+| Public awareness | [FastAPI site](../deploy/cyber-suraksha-independent/) | HTTP routes, educational responses and browser interactions |
+| Owner-only pilot | [Portal tests](../deploy/citizen-owner-portal/tests/) | Authentication, OTP/MFA, private mode, role checks, case ownership and optional integrations |
+| Original Flask training | [Legacy tests](../tests/) | Synthetic incident, SOC, awareness and local persistence flows |
+| Browser scripts | [Node testing](../deploy/citizen-owner-portal/tests/checker.test.cjs) | Scam-checker behavior and adversarial fixture validation |
+
+## Commands
+
+From the repository root after installing the **historical** Flask app's requirements:
 
 ```powershell
-.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+python -m unittest discover -s tests -v
 ```
 
-The current test file contains checks for:
+For the separate owner portal, use its own isolated environment and requirements from `deploy/citizen-owner-portal/`:
 
-- Stage 1/2 page availability and incident submission/detail retrieval.
-- Preservation of an existing incident across additive schema initialization.
-- SOC dashboard filtering, investigation note persistence and rejection of an invalid workflow status.
-- Zero Trust simulation output.
-- Local disclosure report persistence.
-- English/Hindi/Telugu awareness page rendering and quiz scoring.
-- `/health` response.
+```powershell
+cd deploy/citizen-owner-portal
+python -m pip install -r requirements.txt -r requirements-test.txt
+python -m pytest -q
+```
 
-## Test evidence policy
+Where Node.js is available, the JavaScript test entrypoints can be run from the portal folder:
 
-A test result is valid only for the exact source version and environment in which it was run. Record the date, Python version, Flask version, command and complete pass/fail summary when preparing a release. Do not state that tests passed based solely on an earlier run or on the existence of test files.
+```powershell
+node --test tests/checker.test.cjs tests/reputation.test.cjs
+```
 
-## Manual acceptance checklist
+These are **suggested execution commands, not a claim they have run successfully during this documentation update**. Actual versions, flags and environment dependencies must be checked before release.
 
-- [ ] Launch with `run_windows.bat` and load the dashboard.
-- [ ] Submit a fictional incident and open its generated reference page.
-- [ ] Review the incident register.
-- [ ] Complete each fraud-simulator scenario.
-- [ ] Filter SOC alerts and save an investigation note.
-- [ ] Try each Zero Trust simulation scenario.
-- [ ] Submit a disclosure report for a fictional training asset only.
-- [ ] Visit awareness pages in English, Hindi and Telugu and complete the quiz.
-- [ ] Confirm the UI does not claim to contact authorities or enforce real-world controls.
-- [ ] Confirm the local database is excluded from Git.
+## Manual live verification
 
-## Current verification note
+Follow [manual acceptance checklist](../MANUAL_TEST_CHECKLIST.md) and [owner access review](OWNER_PORTAL_ACCESS_REVIEW.md). Test unauthenticated and unauthorized requests without any real citizen data; check configured private mode, registration restrictions, session termination, MFA freshness, CSRF defenses and actual hosting secrets without revealing them.
 
-The source package includes an automated test suite. Test execution must be repeated in the developer's Python environment after installing `requirements.txt`; this documentation intentionally does not claim a passing result without a successful run.
+## Evidence record
+
+Record `git rev-parse HEAD`, runtime versions, command, test output, exit code, test data policy, tester/date and unresolved findings. Retain old generated test logs as historical evidence; do not rewrite their original contents.
+
+## Outstanding verification categories
+
+Independent penetration test, current dependency checks, production-specific backups/restore, email verification delivery, actual hosting TLS/proxy/headers and accessibility acceptance must be separately verified for any service that requires them.

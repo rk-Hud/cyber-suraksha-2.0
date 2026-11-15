@@ -1,5 +1,15 @@
-# Safe sample data policy
+# Synthetic data and privacy-safe demonstrations
 
-All seeded names, phone numbers, IP addresses, alerts, transactions and events are fictional training examples. IP ranges use documentation-only ranges (RFC 5737). Do not enter real victim details, passwords, OTPs, UPI PINs, card data, authentication tokens or sensitive vulnerability information.
+[Project overview](README.md) · [Security](SECURITY.md) · [Testing](docs/TESTING.md)
 
-The reporting module is a local educational register, not an official complaint channel. For a real financial cyber fraud in India, contact your bank through its official channel and call 1930 promptly; use https://cybercrime.gov.in/ for the official reporting portal.
+All names, payment scenarios, phishing examples, SOC alerts and incident records used in public demonstrations and acceptance tests must be fictional. Use reserved documentation address/IP ranges and clearly marked sample identities. Never represent seeded incidents as real victims, actual police filings or live incident-response results.
+
+## Never include in repository examples
+
+- Actual names, phone numbers, identity records, bank accounts, UPI PINs or payment card details.
+- Passwords, OTPs, session tokens, API keys, mail credentials, encryption keys, live databases or backups.
+- Real case narratives, production security logs, private vulnerability proofs or active malicious targets.
+
+The [public awareness website](deploy/cyber-suraksha-independent/) serves digital-safety education; the [owner-only pilot](deploy/citizen-owner-portal/) requires synthetic accounts until its security and privacy release gates are satisfied.
+
+For an actual Indian cybercrime report use [cybercrime.gov.in](https://cybercrime.gov.in/). For urgent financial cyber fraud call **1930** and notify the bank using a verified official channel.

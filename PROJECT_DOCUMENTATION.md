@@ -1,49 +1,55 @@
-# CYBER SURAKSHA 2.0 — Project Documentation
+# CYBER SURAKSHA 2.0 — Project documentation
 
-**Project:** From Cyber Fraud Awareness to Intelligent Cybercrime Prevention & Response
+![Project banner](docs/assets/cyber-suraksha-banner.svg)
 
-## Purpose
-A beginner-friendly, local-only educational prototype that demonstrates structured cybercrime incident intake, fraud-response decision practice, SOC alert triage, simulated Zero Trust decisions, responsible disclosure intake for fictional assets, and cyber-safety awareness.
+**Project:** From Cyber Fraud Awareness to Intelligent Cybercrime Prevention & Response  
+**Project scope:** Independently maintained educational awareness, private owner pilot and preserved training applications.
+
+[Documentation center](docs/README.md) · [Project overview](docs/PROJECT_OVERVIEW.md) · [Technology stack](docs/TECHNOLOGY_STACK.md)
+
+## Objective
+
+Provide understandable digital-safety information in English, Hindi and Telugu, explain common scam signals and response actions, and demonstrate responsible defensive-security workflows using synthetic training data.
+
+## Current source components
+
+| Service | Purpose | Source | Public status |
+| --- | --- | --- | --- |
+| Multilingual awareness | Safety guidance, on-device tools, quiz and agency references | [FastAPI website](deploy/cyber-suraksha-independent/) | Public educational design |
+| Owner-only pilot | Owner identity, email verification, MFA and controlled workflows | [Flask portal](deploy/citizen-owner-portal/) | Configured private mode, live verification required |
+| Historic Flask training | Fictional reporting, SOC triage, Zero Trust and disclosure exercises | [Original app](app.py) | Local training reference |
+| Earlier integrated UI | Previous prototype and evaluation exercises | [Earlier website](upgrades/unified-website/) | Historical source |
 
 ## Technology
-- Python 3.10+ and Flask 3.1.1
-- SQLite database, created automatically on first launch
-- HTML, CSS and Jinja templates
-- Runs locally at `http://127.0.0.1:5000/`
-- No paid API or cloud account required
 
-## Development stages included
-1. **Stage 1 — Smart Cybercrime Reporting:** local incident intake, validation and reference number.
-2. **Stage 2 — Incident Register:** dashboard, incident list and local detail view.
-3. **Stage 3 — Financial Fraud Simulator:** fictional UPI collect/refund and remote-access scam scenarios with response scoring.
-4. **Stage 4 — SOC Investigation Simulator:** synthetic alerts, severity/status filters, analyst assessment, notes and workflow status.
-5. **Stage 5 — Zero Trust Monitor:** simulated identity/device/context decisions; no real access is enforced.
-6. **Stage 6 — Responsible Vulnerability Disclosure:** local report workflow for fictional training assets.
-7. **Stage 7 — Awareness Centre:** English, Hindi and Telugu learning content and quiz.
-8. **Stage 8 — Integration and Security Testing:** consolidated application, additive database setup, automated tests and manual test checklist.
+**Python · Flask · FastAPI · HTML · CSS · JavaScript · SQLite · PostgreSQL · SQLAlchemy · Git · GitHub · Render · PowerShell.** Components vary; review the [file-level language map](docs/TECHNOLOGY_STACK.md) for exact usage.
 
-## Important limitations
-This is a demonstration prototype, not an official cybercrime reporting service. It does not connect to police, CERT-In, banks, UPI providers, telecom operators, real SIEM/EDR tools or live networks. It does not block payments, isolate devices, enforce production access control, verify vulnerability reports or submit complaints. No real victim data should be stored.
+## Historical training modules
 
-## Local setup
-1. Extract the ZIP to a folder you control, for example `Documents\CYBER_SURAKSHA_2_0_COMPLETE`.
-2. Install Python 3.10 or newer. On Windows, enable **Add Python to PATH**.
-3. Double-click `run_windows.bat`. It creates `.venv`, installs Flask, creates the SQLite database and starts the app.
-4. Open `http://127.0.0.1:5000/`.
-5. Stop the server with `Ctrl+C` in its terminal window.
+The original local Flask/SQLite application includes:
 
-## Run automated tests
-Open PowerShell in the extracted project folder and run:
+1. Fictional incident reporting and reference tracking.
+2. Incident register, detail views and simulated status transitions.
+3. Financial-fraud decision exercises.
+4. Synthetic SOC alert triage and investigation notes.
+5. Simulated Zero Trust access decisions.
+6. Responsible disclosure exercises for fictional assets.
+7. Multilingual awareness and knowledge quizzes.
+8. Local testing and development-stage integration.
 
-```powershell
-.venv\Scripts\Activate.ps1
-python -m unittest discover -s tests -v
-```
+These are educational simulations; they do not connect to banks, government complaint systems, SIEM platforms or real law enforcement.
 
-If PowerShell blocks activation, run the tests directly with `.venv\Scripts\python.exe -m unittest discover -s tests -v`.
+## Local test and operating guides
 
-## Database
-`cyber_suraksha.db` is created automatically in the project folder. Keep a backup before deleting or replacing it. The application uses `CREATE TABLE IF NOT EXISTS` for its schema setup; it does not intentionally drop existing tables. Do not share the database publicly because it may contain locally entered information.
+- [Awareness website](START_R4_WINDOWS.bat) — designed for `127.0.0.1:8094`.
+- [Original Flask training app](run_windows.bat) — historical local launcher (often `127.0.0.1:5000`).
+- [Private owner pilot](deploy/citizen-owner-portal/README_FREE_OWNER_PILOT.md) — separately configured application requiring protected secrets and a database.
+- [Testing policy](docs/TESTING.md), [manual acceptance list](MANUAL_TEST_CHECKLIST.md), [release readiness](docs/RELEASE_READINESS.md).
 
-## Before any public deployment
-Do not deploy this prototype publicly as-is. It is intended for local demonstration. A production review would require authentication, role-based access, CSRF protection, secure secret management, HTTPS, input/privacy review, audit logging, retention controls, backups and independent security testing.
+## Restrictions
+
+Use synthetic training material only. The public awareness site does not create official police complaints, and the private pilot must not take real sensitive reports without appropriate release checks. Never publish credentials, live cases, personal records or private databases. No government, police, bank or institutional affiliation is claimed.
+
+## Identity, copyright and licensing
+
+The repository is independently managed. Preserve third-party licenses and provide truthful evidence for claimed authorship. See [LICENSE](LICENSE), [copyright registration preparation](docs/COPYRIGHT_REGISTRATION_PREPARATION.md), and [media credits](docs/VISUAL_ASSETS.md).
