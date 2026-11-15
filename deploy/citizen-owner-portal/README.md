@@ -1,10 +1,6 @@
-> **CURRENT COMPONENT: OWNER-ONLY PILOT.** The free pilot configuration uses `PRIVATE_MODE=1` and `PUBLIC_REGISTRATION=0`. An older public-release Blueprint also remains in this directory; do not apply its public-registration settings to the private pilot. See [owner access review](../../docs/OWNER_PORTAL_ACCESS_REVIEW.md) and [pilot instructions](README_FREE_OWNER_PILOT.md).
-
-![Owner access flow](../../docs/assets/owner-access-flow.svg)
-
 # CYBER SURAKSHA 2.0 — citizen and owner portal
 
-This independently managed Flask portal is maintained at `deploy/citizen-owner-portal/` in the [CYBER SURAKSHA 2.0 repository](https://github.com/rk-Hud/cyber-suraksha-2.0), separate from the public FastAPI awareness service. No government, college, institutional partner or law-enforcement agency operates it. Verify component authorship and rights before making legal claims.
+Independently architected, developed, authored and owned by **Jatoth Ramakrishna** for public cybersecurity awareness and independent digital-safety support. No institution, company, sponsor or government agency operates this project. This standalone application is prepared for the new repository https://github.com/rk-Hud/cybersuraksha2.0. All application and deployment files live at the repository root; earlier repositories and deployed services are separate.
 
 The homepage combines the dark slate/emerald introduction, private browser tools, three languages, practical training and a collapsed 20-agency directory. Citizen services replaces the previous Security operations section. The supplied CS hexagon identity is used in the header and favicon.
 
