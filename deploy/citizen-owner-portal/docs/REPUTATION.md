@@ -1,5 +1,3 @@
-> **OPTIONAL INTEGRATION, NOT A LIVE SAFETY GUARANTEE.** Current provider credentials and live quota must be verified separately. [Technology stack](../../../docs/TECHNOLOGY_STACK.md) · [Portal security](../SECURITY.md) · [Testing](../../../docs/TESTING.md).
-
 # Optional URL reputation evidence
 
 The local checker remains usable without this integration. It does not need a Google key, transmit pasted content or fetch a suspicious address. The optional lookup adds current **listed-threat evidence** for a single web address; it cannot determine the safety of every URL, authenticate a message's sender, or convert a heuristic score into a fraud probability.
@@ -14,7 +12,7 @@ Hash prefixes are not a guarantee of anonymity: a party with candidate URLs can 
 
 ## Configuration and mounting
 
-Set `SAFEBROWSING_API_KEY` through the protected Render environment configuration after obtaining an appropriate Google key, enabling the API and restricting its API/quota settings. Never put the key in source, templates, browser code, `.env.example`, chat, logs or the project dossier. Google reputation evidence requires its own correctly configured Google credentials, enablement and quota; unrelated vendor API keys cannot replace them.
+Set `SAFEBROWSING_API_KEY` through the protected Render environment configuration after obtaining an appropriate Google key, enabling the API and restricting its API/quota settings. Never put the key in source, templates, browser code, `.env.example`, chat, logs or the project dossier. This is separate from OpenAI API access; an OpenAI key does not provide Google reputation evidence.
 
 The app factory registers:
 
