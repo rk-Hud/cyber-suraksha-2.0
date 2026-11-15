@@ -24,7 +24,7 @@ See [Technology stack](TECHNOLOGY_STACK.md), [Architecture](ARCHITECTURE.md), [T
 
 ## Illustrative cybersecurity infrastructure
 
-![An illustrative third-party photograph of a datacenter](https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Datacenter_Server_Racks_%2822370909788%29.jpg/960px-Datacenter_Server_Racks_%2822370909788%29.jpg)
+![An illustrative third-party photograph of a datacenter](https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/Datacenter_Server_Racks_%2822370909788%29.jpg/960px-Datacenter_Server_Racks_%2822370909788%29.jpg)
 
 *Photograph: Carl Lender, [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Datacenter_Server_Racks_(22370909788).jpg), [CC BY 2.0](https://creativecommons.org/licenses/by/2.0/). Illustration only — not project-owned infrastructure or its hosting environment.*
 
@@ -39,3 +39,9 @@ For a real Indian cybercrime complaint, use [the National Cyber Crime Reporting 
 Project maintained independently by the GitHub repository owner. The software, documentation, referenced third-party media and historical components have distinct rights and licenses; see [LICENSE](../LICENSE), [Media credits](VISUAL_ASSETS.md) and [Copyright preparation](COPYRIGHT_REGISTRATION_PREPARATION.md).
 
 [Back to documentation](README.md)
+
+## Additional illustrative photography
+
+![Third-party photograph of server equipment](https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/Wikimedia_Foundation_Servers_2015-63.jpg/960px-Wikimedia_Foundation_Servers_2015-63.jpg)
+
+*Victor Grigas/Wikimedia Foundation, [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Wikimedia_Foundation_Servers_2015-63.jpg), [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/). Contextual image only; not project-owned infrastructure. [Media credits](VISUAL_ASSETS.md).*
