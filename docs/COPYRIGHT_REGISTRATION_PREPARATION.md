@@ -1,3 +1,7 @@
+![CYBER SURAKSHA 2.0 banner](assets/cyber-suraksha-banner.svg)
+
+[Documentation center](README.md) · [Source languages](TECHNOLOGY_STACK.md) · [License](../LICENSE) · [Media credits](VISUAL_ASSETS.md)
+
 # Software copyright — preparation checklist
 
 **Work name for review:** CYBER SURAKSHA 2.0 — Web Application Software  
