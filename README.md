@@ -90,11 +90,6 @@ The public awareness launcher is intended for local use at `http://127.0.0.1:809
 | Copyright documentation | [Preparation checklist](docs/COPYRIGHT_REGISTRATION_PREPARATION.md) |
 | Media and attribution | [Media credits](docs/VISUAL_ASSETS.md) |
 
-## Infrastructure illustration
-
-![Illustrative photograph of server racks](https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/Datacenter_Server_Racks_%2822370909788%29.jpg/960px-Datacenter_Server_Racks_%2822370909788%29.jpg)
-
-<sub>Photo by Carl Lender, [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Datacenter_Server_Racks_(22370909788).jpg), [CC BY 2.0](https://creativecommons.org/licenses/by/2.0/). Third-party illustration; it does not depict this project's servers or hosting.</sub>
 
 ## Responsible use
 
