@@ -1,12 +1,16 @@
+[Main security policy](../../SECURITY.md) · [Owner access review](../../docs/OWNER_PORTAL_ACCESS_REVIEW.md) · [Platform architecture](../../docs/ARCHITECTURE.md)
+
+![Owner authentication flow](../../docs/assets/owner-access-flow.svg)
+
 # Security policy
 
-CYBER SURAKSHA 2.0 is independently architected, developed, authored and owned by **Jatoth Ramakrishna**. It is an independently funded public cybersecurity-awareness and support project. No university, company, institutional partner or government agency operates or sponsors it.
+CYBER SURAKSHA 2.0 is independently managed. This security document applies to the separate Flask owner portal, which is configured for private owner-only pilot testing. The project is not a government, college, bank or police service. Claims about legal ownership of individual contributions require verification.
 
 ## Report a vulnerability privately
 
-Repository: https://github.com/rk-Hud/cybersuraksha2.0
+Repository: https://github.com/rk-Hud/cyber-suraksha-2.0
 
-Use [GitHub private vulnerability reporting](https://github.com/rk-Hud/cybersuraksha2.0/security/advisories/new) if the repository offers it. Availability of that feature has not been verified. If GitHub does not offer a private report, use the repository owner's published private contact channel to arrange confidential disclosure. No dedicated security mailbox or guaranteed response deadline has been established. Do not put credentials, citizen records, working exploit payloads or personal information in a public issue.
+Use [GitHub private vulnerability reporting](https://github.com/rk-Hud/cyber-suraksha-2.0/security/advisories/new) if the repository offers it. Availability of that feature has not been verified. If GitHub does not offer a private report, use the repository owner's published private contact channel to arrange confidential disclosure. No dedicated security mailbox or guaranteed response deadline has been established. Do not put credentials, citizen records, working exploit payloads or personal information in a public issue.
 
 Include the affected URL or file/version, a concise description, minimal reproduction using your own account and synthetic records, likely impact, and a safe way to contact you. Redact tokens, passwords, OTPs, private keys and other people's information. Stop after demonstrating the problem; do not access further records, cause outages, send unsolicited messages or test systems linked in the official-agency directory.
 
@@ -25,7 +29,7 @@ This policy grants no blanket permission to attack hosting providers, third-part
 
 ## Deployment requirements
 
-The owner-requested public deployment uses `PRIVATE_MODE=0` and `PUBLIC_REGISTRATION=1`. Public pages and account registration do not bypass administrator authorization or private-case ownership. Use `PRIVATE_MODE=1` and `PUBLIC_REGISTRATION=0` only when deliberately returning to owner-only testing. A separate Render origin has its own application access controls; Sites sharing settings do not automatically protect that origin.
+An **earlier public-release Blueprint** describes `PRIVATE_MODE=0` and `PUBLIC_REGISTRATION=1`. The current free pilot Blueprint instead specifies `PRIVATE_MODE=1` and `PUBLIC_REGISTRATION=0`; do not apply older public settings to the private pilot. Public pages and account registration do not bypass administrator authorization or private-case ownership. Use `PRIVATE_MODE=1` and `PUBLIC_REGISTRATION=0` only when deliberately returning to owner-only testing. A separate Render origin has its own application access controls; Sites sharing settings do not automatically protect that origin.
 
 Use HTTPS, an exact allowed host/origin configuration, persistent PostgreSQL, real verified mail delivery, three distinct cryptographic keys, and the exact trusted-proxy count. Keep configuration in protected hosting settings. Never add a bypass OTP, default owner password, plaintext-secret project document, production test-mail capture, or SQLite-on-ephemeral-hosting account database.
 
