@@ -1,44 +1,45 @@
-# CYBER SURAKSHA 2.0 — independent website deployment
+# Public awareness deployment — current service guide
 
-## Version and scope
+[Documentation](README.md) · [Root deployment guide](../DEPLOYMENT.md) · [Release readiness](RELEASE_READINESS.md)
 
-This repository merges the historical Flask education modules from the original `main` branch and the independently deployed R4 FastAPI public preview from the signed-off release branch. The R4 public preview is the Render entrypoint.
+This guide concerns the independent **FastAPI awareness website** only. It is not an owner portal deployment instruction. The earlier migration records and signed-off source fingerprints remain available in repository history and archived documents.
 
-The original Flask modules are retained for local education and development. They are not connected to the public R4 API. The separate R5 administrator review source is intentionally excluded.
+## Source and runtime
 
-## Verified migration sources
+- [FastAPI application](../deploy/cyber-suraksha-independent/main.py)
+- [Static, multilingual website](../deploy/cyber-suraksha-independent/site/)
+- [Pinned direct dependencies](../deploy/cyber-suraksha-independent/requirements.txt)
+- [Root Render Blueprint](../render.yaml)
 
-- Original source: `rk-Hud/cyber-suraksha-2.0`, branch `main`, commit `48dc47dcc25a7a19f0d488e092ed8ae0cf3f2846`.
-- R4 public preview: same original repository, branch `release/cs20-independent-20261112-2154349612`, commit `7059598a4213d7ce7c4e151d91e3f5104240a6f3`.
+Current repository Blueprint instructions:
 
-The migration script refuses to assemble a new repository if either commit has changed unexpectedly. Recheck the release before modifying those values.
+```text
+Build: pip install -r deploy/cyber-suraksha-independent/requirements.txt
+Start: cd deploy/cyber-suraksha-independent && uvicorn main:app --host 0.0.0.0 --port $PORT --no-access-log
+Health: /api/v1/health
+```
 
-## Deployment
+The Blueprint currently specifies a free Singapore web service with auto-deploy disabled in source. Confirm the actual Render service, linked SHA, branch, runtime settings, costs and health from the provider before declaring a successful release.
 
-Build command: `pip install -r deploy/cyber-suraksha-independent/requirements.txt`
+## Local Windows launch
 
-Start command: `cd deploy/cyber-suraksha-independent && uvicorn main:app --host 0.0.0.0 --port $PORT --no-access-log`
+From the repository root, start [START_R4_WINDOWS.bat](../START_R4_WINDOWS.bat). If `127.0.0.1:8094` is available, open `http://127.0.0.1:8094/`.
 
-Readiness endpoint: `/api/v1/health`.
+## Required acceptance checks
 
-Suggested Render Blueprint project: `CYBER SURAKSHA 2.0 - Unified Public`, environment `public-preview`, web service `cyber-suraksha-2-0-unified-public`, Singapore region, free plan, automatic deploy disabled.
+1. Confirm `/`, `/en/`, `/hi/`, `/te/` and `/api/v1/health` return expected content.
+2. Review privacy, permissions, and service-status pages.
+3. Test the JavaScript learning tools on mobile and desktop, with no real personal information.
+4. Verify browser headers, HTTPS, and logs on the actual host.
+5. Confirm no real complaint submission, email OTP, citizen registration or administrative mutation is exposed through this public service.
+6. Record test command, Git SHA, outcome, deployment URL and rollback procedure.
 
-## Security gates
+## Other services and historical records
 
-Do not enable real citizen registration, case intake, email OTP or administrator operations until an authorized persistent datastore, verified outbound mail, MFA, data retention/privacy policy, backup/restore validation and security acceptance have been completed.
+The owner pilot has a **different** [Blueprint](../deploy/citizen-owner-portal/render-free-pilot.yaml) and separate [security requirements](OWNER_PORTAL_ACCESS_REVIEW.md). It must not be automatically deployed as part of a public-awareness rebuild.
 
-Do not connect this public preview to local enterprise Nginx, certificate authorities, databases or credentials.
+The old Flask/SQLite educational prototype `app.py` and earlier unified website remain historical/reference source. Previous migration hashes, release narratives and retired service plans in old documents are version-specific audit history, not current upgrade instructions.
 
-Do not confuse the training website with an official government complaint portal.
+## Safety
 
-## Rollout and retirement
-
-1. Prepare new repository from verified branches.
-2. Run code and security checks.
-3. Create the new repository and push only the reviewed files.
-4. Deploy a separate Render service from the new repository.
-5. Confirm the new service is live and the site works across language pages, browser interactions, HTTP security headers and blocked account routes.
-6. Check old deployment dependencies, download repository backup and any logs/documents that must be retained.
-7. Only then consider removing old web services and old GitHub repository using the provider dashboard.
-
-Repository deletion and service deletion are intentionally **not** performed by the migration package. They are irreversible and may remove public links, service logs and Git history.
+No government, bank, CERT-In or police affiliation or official report-submission integration is claimed. For real Indian cybercrime reports visit [cybercrime.gov.in](https://cybercrime.gov.in/) and for urgent financial fraud call **1930**.

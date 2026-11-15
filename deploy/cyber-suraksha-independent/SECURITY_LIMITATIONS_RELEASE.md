@@ -1,3 +1,5 @@
+> **HISTORICAL RELEASE SECURITY RECORD.** These checks describe an earlier source version and do not constitute a current live assessment. [Current release readiness](../../docs/RELEASE_READINESS.md) · [Testing](../../docs/TESTING.md).
+
 # Security limits and production controls still outstanding
 
 The independent FastAPI public-awareness website is not an authorized police complaint portal or a government-sponsored service. User-facing exercises are synthetic. This package does not collect real police complaints.

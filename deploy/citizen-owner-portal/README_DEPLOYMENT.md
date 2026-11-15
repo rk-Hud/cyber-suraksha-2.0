@@ -1,3 +1,5 @@
+> **ARCHIVED R3 DEPLOYMENT PACKAGE.** The repository names, branch, file layout, dates and test evidence below record an earlier release package. For current instructions use [deployment overview](../../DEPLOYMENT.md), [private pilot](README_FREE_OWNER_PILOT.md), and [release readiness](../../docs/RELEASE_READINESS.md). Historical claims below are retained as originally recorded.
+
 # R3 PowerShell manifest fix
 
 This package has the same 60 source files and SHA-256 manifest as the prior package. Only the PowerShell publisher's JSON-array conversion was fixed to work with Windows PowerShell 5.1. The publisher creates a review branch ONLY; no deployment is performed.

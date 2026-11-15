@@ -1,3 +1,5 @@
+> **HISTORICAL STAGE 19 PREVIEW RECORD.** Version-specific instructions are retained, but current deployment must be verified separately. [Current deployment guide](../../DEPLOYMENT.md) · [Documentation center](../../docs/README.md).
+
 # CYBER SURAKSHA 2.0 — Independent Preview App
 
 Scope: Independent public cyber safety awareness; no government affiliation, police intake or real complaint storage.

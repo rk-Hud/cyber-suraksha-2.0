@@ -1,128 +1,109 @@
-# CYBER SURAKSHA 2.0
+<p align="center">
+  <img src="docs/assets/cyber-suraksha-banner.svg" alt="CYBER SURAKSHA 2.0 — Independent Cyber Fraud Awareness and Owner Operations" width="100%">
+</p>
 
-### From Cyber Fraud Awareness to Intelligent Cybercrime Prevention & Response
+<h1 align="center">CYBER SURAKSHA 2.0</h1>
+<p align="center"><strong>From Cyber Fraud Awareness to Intelligent Cybercrime Prevention &amp; Response</strong></p>
+<p align="center">Independent cybersecurity awareness · Multilingual education · Controlled owner operations</p>
 
-**An independent cybersecurity awareness, education and owner-operations project.**
-
-[Overview](#overview) · [Applications](#applications) · [Architecture](#architecture-at-a-glance) · [Getting started](#getting-started) · [Security](#security-and-access-control) · [Documentation](#documentation) · [Ownership](#ownership-and-licensing)
+<p align="center">
+  <a href="docs/PROJECT_OVERVIEW.md">Project overview</a> ·
+  <a href="docs/README.md">Documentation</a> ·
+  <a href="docs/TECHNOLOGY_STACK.md">Technologies</a> ·
+  <a href="docs/ARCHITECTURE.md">Architecture</a> ·
+  <a href="SECURITY.md">Security</a>
+</p>
 
 ---
 
-## Overview
+## About the project
 
-CYBER SURAKSHA 2.0 brings together multilingual digital-safety guidance, scam-signal education, a practical response planner, and an isolated portal for controlled owner operations. The repository preserves the current applications as well as earlier training and prototype work.
+CYBER SURAKSHA 2.0 is an independently maintained platform for digital-safety education, fraud-signal awareness and synthetic cybersecurity training. It combines a **public multilingual awareness website** with a **separately configured private owner portal pilot**. These services have different deployment and security boundaries; this repository also retains earlier training applications and historical release evidence.
 
-**Important distinction:** the public **awareness site** and the **owner-only pilot portal** are different services with different access policies. The awareness website is public by design. The pilot portal is configured for private, owner-only use. Neither service is an official government cybercrime-reporting system.
+**Independent project:** no college, institution, company, government department, police service or bank operates or endorses this repository. The name and professional presentation do not imply official authority or certification.
 
-The project is independently managed and is **not an institutional, college, university, police or government programme**. The software should not be represented as officially endorsed or certified.
+## Explore the platform
 
-## Applications
-
-| Component | Location | Purpose | Access |
+| Project component | What it offers | Source | Audience |
 | --- | --- | --- | --- |
-| Multilingual awareness site | `deploy/cyber-suraksha-independent/` | English, Hindi and Telugu educational guidance, scam-signal checking, action planning and learning tools | Public educational content |
-| Owner portal pilot | `deploy/citizen-owner-portal/` | Controlled owner sign-in, support-case workflows, administration and testing | Private mode; owner authentication and MFA for admin actions |
-| Original Flask training application | `app.py`, `templates/`, `static/`, `tests/` | Earlier simulations and training material | Development and historical reference |
-| Previous interface work | `upgrades/unified-website/` | Earlier integrated website experiments | Development and historical reference |
+| **Public awareness site** | English, Hindi, Telugu; digital safety; scam-signal tools; action planner and knowledge quiz | [FastAPI service](deploy/cyber-suraksha-independent/) | Public learners |
+| **Owner-only portal pilot** | Owner authentication, MFA, protected administrative workflows and synthetic testing | [Flask portal](deploy/citizen-owner-portal/) | Configured owner |
+| **SOC and incident training** | Fictional reports, alerts and investigation exercises | [Historical Flask app](app.py) | Local training |
+| **Earlier unified interface** | Previous local website and evaluation work | [Archived development](upgrades/unified-website/) | Reference |
 
-### Multilingual awareness site
+> **Safety boundary:** The public awareness site does not file police complaints. The private pilot must not collect real citizen or victim records before independent security, privacy, backup and release checks. See [release readiness](docs/RELEASE_READINESS.md).
 
-- English, Hindi and Telugu interfaces.
-- Safety information, practical fraud-response steps and agency references.
-- Browser-based scam-signal tools and learning materials.
-- Health, privacy, permissions and service-status pages.
+## Architecture
 
-**Scope:** no public account registration, real police complaint submission, official case filing or live incident intake is enabled in this awareness deployment. Its educational tools are not substitutes for banks, law enforcement or professional incident response.
+![Two independent application boundaries](docs/assets/platform-architecture.svg)
 
-### Owner portal pilot
+The public awareness site runs with **FastAPI + Uvicorn**. The separately configured owner portal uses **Flask, PostgreSQL-oriented persistence and Gunicorn**. The historical Flask/SQLite training app is preserved for reference and local demonstrations.
 
-- Dedicated administrator entry at `/en/admin/login`; owner dashboard at `/en/admin`.
-- Password and emailed verification challenge, with recent authenticator MFA required for protected owner administration.
-- Private-mode access policy and disabled public self-registration in the free pilot Blueprint.
-- Case, user, multilingual content and manual notification operations intended for controlled testing.
-- Synthetic data and test accounts only until independent security, privacy, backup and delivery checks have passed.
+[Full architecture](docs/ARCHITECTURE.md) · [Technical design](docs/TECHNICAL_DESIGN.md) · [Owner security review](docs/OWNER_PORTAL_ACCESS_REVIEW.md)
 
-The pilot is **not approved for collection of real complaints or sensitive citizen records**.
+## Programming languages and tools
 
-## Architecture at a glance
+<p>
+  <img alt="Python" src="https://img.shields.io/badge/Python-backend-3776AB?logo=python&logoColor=white">
+  <img alt="HTML5" src="https://img.shields.io/badge/HTML5-pages-E34F26?logo=html5&logoColor=white">
+  <img alt="CSS3" src="https://img.shields.io/badge/CSS3-styling-1572B6?logo=css&logoColor=white">
+  <img alt="JavaScript" src="https://img.shields.io/badge/JavaScript-interactions-F7DF1E?logo=javascript&logoColor=black">
+  <img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-owner%20data-4169E1?logo=postgresql&logoColor=white">
+  <img alt="GitHub" src="https://img.shields.io/badge/GitHub-source-181717?logo=github&logoColor=white">
+</p>
 
-```text
-cyber-suraksha-2.0/
-├── deploy/
-│   ├── cyber-suraksha-independent/
-│   │   ├── main.py             # FastAPI awareness service
-│   │   └── site/               # public multilingual site assets
-│   └── citizen-owner-portal/
-│       ├── portal/             # Flask private-portal application
-│       ├── templates/          # owner and account interfaces
-│       ├── tests/              # security and functional checks
-│       └── render-free-pilot.yaml
-├── app.py                      # earlier Flask training app
-├── docs/                       # architecture, tests and operations
-├── tests/                      # earlier application tests
-└── render.yaml                 # independent public-site configuration
-```
+| Area | Technologies |
+| --- | --- |
+| Backend | Python, FastAPI, Flask, Jinja |
+| Frontend | HTML5, CSS3, JavaScript |
+| Persistence | SQLite (legacy), PostgreSQL and SQLAlchemy (portal) |
+| Access controls | Password and email OTP, owner TOTP, sessions, CSRF |
+| Hosting and developer tools | Render, Uvicorn, Gunicorn, Git, GitHub, Windows PowerShell |
+| Optional integrations | Resend HTTPS email API; Google Safe Browsing reputation checks when configured |
 
-The awareness site uses **FastAPI**. The owner portal uses **Flask** with PostgreSQL-oriented configuration. These applications must be reviewed and deployed independently; do not confuse a Blueprint configuration with a verified live deployment.
+For verified code paths and dependency lists, open the [technology stack and code map](docs/TECHNOLOGY_STACK.md).
 
-## Getting started
+## Running the applications
 
-### Awareness site (Windows)
-
-From the repository root, run:
+**Awareness website (Windows):**
 
 ```powershell
 .\START_R4_WINDOWS.bat
 ```
 
-The launcher is intended to start the educational website locally at `http://127.0.0.1:8094/` when the port is available. See [rebuild deployment instructions](docs/REBUILD_DEPLOYMENT.md).
+The public awareness launcher is intended for local use at `http://127.0.0.1:8094/` when that port is available. See [current deployment instructions](docs/REBUILD_DEPLOYMENT.md).
 
-### Owner portal
+**Owner portal:** do not apply the awareness launcher or public Blueprint to the private portal. Follow the [owner pilot instructions](deploy/citizen-owner-portal/README_FREE_OWNER_PILOT.md) and use a separate persistent database, privately configured mail credentials, owner authentication and MFA. The [access review checklist](docs/OWNER_PORTAL_ACCESS_REVIEW.md) distinguishes code policy from actual live verification.
 
-Read the [private pilot preparation guide](deploy/citizen-owner-portal/README_FREE_OWNER_PILOT.md) before running or deploying the portal. Its database URL, session keys, owner mailbox and mail credentials belong in protected environment settings, **never** in committed files. Use a separate persistent database for the pilot, review provider costs and configuration, and test using fictional records.
+**Original educational app:** `run_windows.bat` and `app.py` are preserved for historical Flask/SQLite training; see [project documentation](PROJECT_DOCUMENTATION.md).
 
-Do not modify the public awareness deployment when preparing the private portal.
+## Documentation and resources
 
-## Security and access control
-
-| Requirement | Expected pilot policy |
+| Guide | Link |
 | --- | --- |
-| Private mode | `PRIVATE_MODE=1` |
-| Public registration | `PUBLIC_REGISTRATION=0` |
-| Owner identity | Exact configured `ADMIN_EMAIL` |
-| Administrative operations | Active owner session plus recent authenticator MFA |
-| State-changing requests | Server-side CSRF and authorization checks |
-| Secrets and personal data | Excluded from source control |
-| Live citizen reports | Not permitted in the unreviewed pilot |
+| Documentation center | [docs/README.md](docs/README.md) |
+| Project and feature overview | [Project overview](docs/PROJECT_OVERVIEW.md) |
+| Technical design and languages | [Technology stack](docs/TECHNOLOGY_STACK.md) |
+| Security, privacy and access controls | [Security](SECURITY.md) · [Owner access](docs/OWNER_PORTAL_ACCESS_REVIEW.md) |
+| Testing and release criteria | [Testing](docs/TESTING.md) · [Release readiness](docs/RELEASE_READINESS.md) |
+| Accessibility and contribution | [Accessibility](ACCESSIBILITY.md) · [Contributing](CONTRIBUTING.md) |
+| Copyright documentation | [Preparation checklist](docs/COPYRIGHT_REGISTRATION_PREPARATION.md) |
+| Media and attribution | [Media credits](docs/VISUAL_ASSETS.md) |
 
-Some login, recovery, verification, health and static endpoints must remain reachable to make owner sign-in and health checks possible. **Owner-only access does not mean that every URL returns 403 without a session.** The protected application functions must reject unauthorized users on the server.
+## Infrastructure illustration
 
-This table describes repository configuration, **not a claim that the deployed service has passed a live penetration test**. See [owner portal access review](docs/OWNER_PORTAL_ACCESS_REVIEW.md), [security policy](SECURITY.md) and the [pilot security guidance](deploy/citizen-owner-portal/SECURITY.md).
+![Illustrative photograph of server racks](https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/Datacenter_Server_Racks_%2822370909788%29.jpg/960px-Datacenter_Server_Racks_%2822370909788%29.jpg)
 
-For an actual cybercrime complaint in India, use [cybercrime.gov.in](https://cybercrime.gov.in/). For urgent financial cyber fraud, the national helpline is **1930**.
+<sub>Photo by Carl Lender, [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Datacenter_Server_Racks_(22370909788).jpg), [CC BY 2.0](https://creativecommons.org/licenses/by/2.0/). Third-party illustration; it does not depict this project's servers or hosting.</sub>
 
-## Documentation
+## Responsible use
 
-| Document | Contents |
-| --- | --- |
-| [Architecture](docs/ARCHITECTURE.md) | Components and system boundaries |
-| [Technical design](docs/TECHNICAL_DESIGN.md) | Implementation background |
-| [Testing](docs/TESTING.md) | Test coverage and verification guidance |
-| [Owner portal access review](docs/OWNER_PORTAL_ACCESS_REVIEW.md) | Admin-only pilot requirements and release checks |
-| [Copyright preparation](docs/COPYRIGHT_REGISTRATION_PREPARATION.md) | Software filing evidence checklist |
-| [Deployment](docs/REBUILD_DEPLOYMENT.md) | Awareness deployment instructions |
-| [Security](SECURITY.md) | Responsible vulnerability reporting |
+Only use fictional data in demonstrations and testing. CYBER SURAKSHA 2.0 is **not** a government or law-enforcement reporting website. For real cybercrime reporting in India, use the [National Cyber Crime Reporting Portal](https://cybercrime.gov.in/), and for urgent financial cyber fraud call **1930**. Seek appropriate professional help for serious incidents.
 
-## Ownership and licensing
+## Ownership and license
 
-**Project:** CYBER SURAKSHA 2.0  
-**Repository maintainer:** [rk-Hud](https://github.com/rk-Hud)  
-**Project status:** Independently maintained; no government or institutional affiliation
-
-The repository includes original project work, historical material and third-party dependencies, each subject to its actual rights and attribution requirements. Claims in legal filings should be based on verified authorship and ownership evidence.
-
-The top-level repository currently uses the **MIT License**: see [LICENSE](LICENSE). The MIT License grants broad reuse rights subject to its conditions; copyright registration does not retroactively revoke licenses already granted. Do not assume that all third-party assets or dependencies are covered by this repository's license.
+Maintained independently at [rk-Hud/cyber-suraksha-2.0](https://github.com/rk-Hud/cyber-suraksha-2.0). The repository's top-level [MIT License](LICENSE) applies according to its terms; separate third-party media and dependencies retain their own licenses. Authorship and exclusive rights for a particular component must be supported by evidence when making legal declarations. See [copyright preparation](docs/COPYRIGHT_REGISTRATION_PREPARATION.md).
 
 ---
 
-<sub>CYBER SURAKSHA 2.0 • Independent cybersecurity awareness and controlled owner-operations project.</sub>
+<p align="center"><sub>CYBER SURAKSHA 2.0 · Cyber safety through awareness, practical guidance and responsible engineering</sub></p>

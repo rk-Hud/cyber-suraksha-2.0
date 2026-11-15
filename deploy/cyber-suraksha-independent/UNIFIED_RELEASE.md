@@ -1,3 +1,5 @@
+> **HISTORICAL PUBLIC PREVIEW SUMMARY.** The public awareness deployment is separate from the authenticated owner pilot. The statements below describe a specific earlier release. [Current project overview](../../docs/PROJECT_OVERVIEW.md) · [Technology map](../../docs/TECHNOLOGY_STACK.md).
+
 # CYBER SURAKSHA 2.0 — Unified independent preview
 
 Owner: Jatoth Ramakrishna. Independently operated.

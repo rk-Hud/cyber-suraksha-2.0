@@ -1,58 +1,43 @@
-# Technical Design Document
+# Technical design and engineering scope
 
-## 1. Purpose
+[Docs](README.md) · [Architecture](ARCHITECTURE.md) · [Source technology map](TECHNOLOGY_STACK.md)
 
-CYBER SURAKSHA 2.0 demonstrates a collection of cyber-safety and defensive-security learning workflows in one local web application. It is intended for student learning, hackathon demonstration and awareness—not for handling real cybercrime complaints.
+## Objectives
 
-## 2. Design goals
+- Communicate accessible cyber-fraud prevention and response guidance in English, Hindi and Telugu.
+- Keep public educational tools separate from authenticated owner workflows.
+- Preserve demonstrable synthetic SOC and incident-learning modules without claiming real integrations.
+- Support reviewable test records, clear deployment boundaries and safe secret handling.
+- Avoid presenting the independent project as a government or law-enforcement system.
 
-- Provide a simple browser-based interface that can run locally on a student Windows laptop.
-- Demonstrate basic server-side form processing and local persistence.
-- Separate the learning workflows into understandable modules.
-- Use fictional data for scenarios and SOC triage practice.
-- Keep the setup free of paid APIs and cloud dependencies.
+## Component decisions
 
-## 3. Technology decisions
+| Component | Design | Source |
+| --- | --- | --- |
+| Awareness API | FastAPI, Uvicorn, Python | [main.py](../deploy/cyber-suraksha-independent/main.py) |
+| Browser UI | HTML, CSS and JavaScript | [public site assets](../deploy/cyber-suraksha-independent/site/) |
+| Portal backend | Flask, Gunicorn, sessions and validation | [portal package](../deploy/citizen-owner-portal/portal/) |
+| Portal persistence | SQLAlchemy models backed by PostgreSQL | [models.py](../deploy/citizen-owner-portal/portal/models.py) |
+| Portal identity | Owner identity, password/OTP, authenticator MFA, CSRF | [security.py](../deploy/citizen-owner-portal/portal/security.py) |
+| Legacy simulations | Flask, Jinja, local SQLite | [original app](../app.py) |
+| Build and hosting | Render configuration and GitHub test workflow | [deployment guide](../DEPLOYMENT.md) |
 
-| Technology | Role | Reason in this prototype |
-|---|---|---|
-| Python | Application language | Beginner-friendly and widely used for automation/security learning |
-| Flask 3.1.1 | Web framework | Lightweight routing and template rendering |
-| SQLite | Local persistence | File-based database; no separate database server |
-| Jinja | HTML templating | Server-rendered pages |
-| CSS | User interface styling | Static stylesheet served by Flask |
-| `unittest` | Automated tests | Built into Python; supports repeatable route/database tests |
+## Boundary assumptions
 
-## 4. Functional modules
+**Public awareness:** self-serve educational materials, not a credentialed support-case portal. Its on-device tools cannot guarantee that an unfamiliar URL, message or contact is safe.
 
-1. **Incident intake and register:** accepts a fictional incident description, creates a reference and stores the record locally.
-2. **Fraud simulator:** presents fictional payment-fraud situations and supports response decision practice.
-3. **SOC simulator:** displays synthetic security alerts and supports severity filtering, investigation notes and workflow status changes.
-4. **Zero Trust simulator:** demonstrates contextual access decisions for predefined scenarios; it does not control a real identity provider or device.
-5. **Disclosure intake:** records a local report concerning a fictional training asset.
-6. **Awareness centre:** provides English, Hindi and Telugu awareness learning content and a quiz.
+**Private pilot:** restricted owner administration. Sign-in, verification, static or health endpoints may be reachable unauthenticated while protected records and mutations require owner authorization. `PRIVATE_MODE=1` and `PUBLIC_REGISTRATION=0` are intended deployment settings, not a verified statement about the running server.
 
-## 5. Non-functional considerations
+**Historical prototype:** independent local learner exercises. Its earlier requirements and SQLite schema must not be treated as current portal schema or public-site start commands.
 
-- **Portability:** Python and a local SQLite file keep the prototype lightweight.
-- **Privacy:** the database is local and excluded from version control by default.
-- **Maintainability:** route logic, templates, styles and tests are stored in separate paths.
-- **Testability:** Flask's test client and temporary test databases exercise key workflows.
-- **Security posture:** suitable only for local demonstration; not reviewed or hardened for public deployment.
+## Security and data
 
-## 6. Error handling and data integrity
+Always use synthetic data during development. Do not commit populated databases or secret keys. Verify TLS, origin protection, CSRF, rate limits, session expiry, MFA and access control on the actual deployment. Maintain separate mail settings, backup/restore procedures and data retention policies.
 
-The application uses SQLite parameterized statements in its data operations and creates its tables if they do not already exist. The test suite includes an additive-migration preservation check. This is not a substitute for production database migration tooling, input-fuzzing or a full security assessment.
+## Validation
 
-## 7. Out of scope
+Review [automated and manual testing](TESTING.md), [access-control checklist](OWNER_PORTAL_ACCESS_REVIEW.md) and [release acceptance gates](RELEASE_READINESS.md). A successful source syntax check is not evidence of live delivery or production security.
 
-Live cybercrime submission, police/CERT-In/bank integration, payment blocking, live threat-intelligence lookups, production SIEM/EDR integrations, endpoint isolation, real Zero Trust enforcement, user accounts, role-based access, multi-tenant hosting and automated vulnerability verification.
+## Related documents
 
-## 8. Future improvements
-
-- Add authentication, role-based access and CSRF protection before any multi-user deployment.
-- Move configuration and secret management to environment-specific settings.
-- Add structured audit logging, retention/deletion policies and safer evidence handling.
-- Add accessibility and responsive UI testing.
-- Expand automated tests for validation boundaries and error cases.
-- Add a reviewed, anonymized demonstration dataset and documented reset procedure.
+[Project overview](PROJECT_OVERVIEW.md) · [Media attribution](VISUAL_ASSETS.md) · [Copyright worksheet](COPYRIGHT_REGISTRATION_PREPARATION.md)

@@ -1,20 +1,27 @@
 ---
-name: Feature request
-about: Suggest an idea for this project
-title: ''
-labels: ''
-assignees: ''
-
+name: "Feature request"
+about: "Propose a safe and appropriately scoped improvement"
+title: "[Feature] "
+labels: ["enhancement"]
+assignees: []
 ---
 
-**Is your feature request related to a problem? Please describe.**
-A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
+## User need
+What digital-safety, accessibility or defensive-training problem would this improve?
 
-**Describe the solution you'd like**
-A clear and concise description of what you want to happen.
+## Component
+- [ ] Public FastAPI awareness website
+- [ ] Private owner portal
+- [ ] Historical Flask training app
+- [ ] Documentation / translation / accessibility
 
-**Describe alternatives you've considered**
-A clear and concise description of any alternative solutions or features you've considered.
+## Proposed behavior
+Describe a small, testable change and cite related source files.
 
-**Additional context**
-Add any other context or screenshots about the feature request here.
+## Privacy, access and rights
+Will this use only fictional data, preserve owner authorization, avoid sensitive data exposure and respect third-party image/code licenses?
+
+## Validation
+Describe expected automated tests, browser checks and release evidence.
+
+[Project documentation](../../docs/README.md) · [Contributing](../../CONTRIBUTING.md)

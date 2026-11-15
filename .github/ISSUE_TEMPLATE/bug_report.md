@@ -1,38 +1,31 @@
 ---
-name: Bug report
-about: Create a report to help us improve
-title: ''
-labels: ''
-assignees: ''
-
+name: "Bug report"
+about: "Report a reproducible, non-sensitive project defect"
+title: "[Bug] "
+labels: ["bug"]
+assignees: []
 ---
 
-**Describe the bug**
-A clear and concise description of what the bug is.
+## Affected component
+- [ ] Public FastAPI awareness website
+- [ ] Private owner portal (synthetic test accounts only)
+- [ ] Historical Flask training app
+- [ ] Documentation or accessibility
 
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
-4. See error
+## Expected and observed behavior
+Describe the issue without real case details, passwords, API credentials or private logs.
 
-**Expected behavior**
-A clear and concise description of what you expected to happen.
+## Steps to reproduce
+1.
+2.
+3.
 
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
+## Test environment
+- Git SHA / branch:
+- Browser / OS / Python / Node version:
+- Relevant route or source path (no secret query values):
 
-**Desktop (please complete the following information):**
- - OS: [e.g. iOS]
- - Browser [e.g. chrome, safari]
- - Version [e.g. 22]
+## Evidence
+Add only sanitized screenshots or fictional fixtures. **Do not publish security vulnerabilities or sensitive reproduction data here.** Follow [private security reporting](../../SECURITY.md).
 
-**Smartphone (please complete the following information):**
- - Device: [e.g. iPhone6]
- - OS: [e.g. iOS8.1]
- - Browser [e.g. stock browser, safari]
- - Version [e.g. 22]
-
-**Additional context**
-Add any other context about the problem here.
+[Contribution guide](../../CONTRIBUTING.md) · [Testing](../../docs/TESTING.md)

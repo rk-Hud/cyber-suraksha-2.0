@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="335" viewBox="0 0 1100 335" role="img" aria-labelledby="title desc">
+<title id="title">Private portal administrator access path</title><desc id="desc">Sign in, verify email challenge, establish owner session, complete recent authenticator challenge, access protected admin actions. Requests lacking authorization are denied.</desc>
+<rect width="1100" height="335" rx="20" fill="#091926"/>
+<text x="50" y="56" fill="#effbff" font-family="Arial,sans-serif" font-size="28" font-weight="700">Owner access control</text>
+<text x="52" y="90" fill="#b4cbd5" font-family="Arial,sans-serif" font-size="16">Server-side enforcement — never rely on a hidden link</text>
+<g font-family="Arial,sans-serif" text-anchor="middle" font-weight="700" font-size="18">
+<rect x="46" y="145" width="180" height="90" rx="12" fill="#173a4a" stroke="#52c9d5" stroke-width="2"/><text x="136" y="179" fill="#f0ffff">Owner</text><text x="136" y="205" fill="#c2e6e9" font-weight="400" font-size="15">credentials</text>
+<rect x="254" y="145" width="180" height="90" rx="12" fill="#173a4a" stroke="#52c9d5" stroke-width="2"/><text x="344" y="179" fill="#f0ffff">Email</text><text x="344" y="205" fill="#c2e6e9" font-size="15" font-weight="400">verification</text>
+<rect x="462" y="145" width="180" height="90" rx="12" fill="#173a4a" stroke="#52c9d5" stroke-width="2"/><text x="552" y="179" fill="#f0ffff">Owner</text><text x="552" y="205" fill="#c2e6e9" font-size="15" font-weight="400">session</text>
+<rect x="670" y="145" width="180" height="90" rx="12" fill="#134336" stroke="#64d6aa" stroke-width="2"/><text x="760" y="179" fill="#f0ffff">Recent</text><text x="760" y="205" fill="#b7f9da" font-size="15" font-weight="400">authenticator MFA</text>
+<rect x="878" y="145" width="180" height="90" rx="12" fill="#134336" stroke="#64d6aa" stroke-width="2"/><text x="968" y="179" fill="#f0ffff">Protected</text><text x="968" y="205" fill="#b7f9da" font-size="15" font-weight="400">admin action</text>
+</g>
+<g stroke="#89c7db" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M226 190h28m-10-8 10 8-10 8M434 190h28m-10-8 10 8-10 8M642 190h28m-10-8 10 8-10 8M850 190h28m-10-8 10 8-10 8"/></g>
+<text x="50" y="288" fill="#e3c998" font-family="Arial,sans-serif" font-size="16">Private-mode policy · disabled public registration · CSRF checks · session limits · audit events</text>
+</svg>

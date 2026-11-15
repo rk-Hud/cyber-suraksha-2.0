@@ -1,3 +1,5 @@
+> **HISTORICAL UNIFIED WEBSITE RECORD.** This folder contains earlier Flask prototypes and evaluation plans. It is not the current public FastAPI entrypoint or the current owner-only pilot. [Documentation center](../../docs/README.md) · [Architecture](../../docs/ARCHITECTURE.md).
+
 # CYBER SURAKSHA 2.0 — Complete Unified Website
 
 **Permanent public project name:** CYBER SURAKSHA 2.0
