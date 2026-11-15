@@ -1,3 +1,5 @@
+> **HISTORICAL R2 PILOT NOTES (NOVEMBER 2026).** These steps are retained for release traceability. Confirm the current Render service and environment settings separately. See [owner access review](../../docs/OWNER_PORTAL_ACCESS_REVIEW.md), [release readiness](../../docs/RELEASE_READINESS.md) and [current architecture](../../docs/ARCHITECTURE.md). Do not use these historical steps to enable public registration.
+
 # CYBER SURAKSHA 2.0 — Free Owner-Only Pilot — R2
 
 ## R2 PowerShell publication fix
