@@ -22,6 +22,7 @@
 ## Application-specific guides
 
 - **Public awareness website:** [README — independent preview](../deploy/cyber-suraksha-independent/README_STAGE19.md), [privacy](../deploy/cyber-suraksha-independent/PRIVACY.md), [security](../deploy/cyber-suraksha-independent/SECURITY.md), [release limits](../deploy/cyber-suraksha-independent/SECURITY_LIMITATIONS_RELEASE.md).
+- **Current owner-portal guide:** [Developer and operator guide](OWNER_PORTAL_DEVELOPER_GUIDE.md) — current source paths, restrictions and integrity-manifest preservation.
 - **Owner-only pilot:** [Portal README](../deploy/citizen-owner-portal/README.md), [free pilot guide](../deploy/citizen-owner-portal/README_FREE_OWNER_PILOT.md), [portal security](../deploy/citizen-owner-portal/SECURITY.md), [optional reputation evidence](../deploy/citizen-owner-portal/docs/REPUTATION.md).
 - **Original Flask training app:** [Project documentation](../PROJECT_DOCUMENTATION.md), [historical design reference](LEGACY_FLASK_README.md), [manual tests](../MANUAL_TEST_CHECKLIST.md).
 
