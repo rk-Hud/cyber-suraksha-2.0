@@ -85,7 +85,7 @@
   },
   {
     "path": "portal/__init__.py",
-    "sha256": "7ce5507dc0a0367d532cb7fcd64408fa95a8afc31ef483e4b974b1677f9f32ac"
+    "sha256": "0fe84dc476561248f7e701d58425c12d39ace560b2b5c0bd563a7944d6a077c1"
   },
   {
     "path": "portal/mail.py",
@@ -149,7 +149,7 @@
   },
   {
     "path": "templates/base.html",
-    "sha256": "993e0c70f878675393b1925c0ef1ef9036553f441f8d7d133ba0b0b47ac003ac"
+    "sha256": "c3e7a4d2949c5e0e1dd90748490f17321a2f7095dd0676dc27adbc24574a7ac8"
   },
   {
     "path": "templates/index.html",

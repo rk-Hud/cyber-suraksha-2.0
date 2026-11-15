@@ -158,7 +158,7 @@ def create_app(config=None):
             "Content-Security-Policy": "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
             "Strict-Transport-Security": "max-age=31536000",
             "X-Content-Type-Options": "nosniff", "X-Frame-Options": "DENY",
-            "Referrer-Policy": "no-referrer", "Cache-Control": "no-store",
+            "Referrer-Policy": "strict-origin", "Cache-Control": "no-store",
             "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
             "Cross-Origin-Opener-Policy": "same-origin", "Cross-Origin-Resource-Policy": "same-origin",
             "X-Request-ID": getattr(g, "request_id", ""),

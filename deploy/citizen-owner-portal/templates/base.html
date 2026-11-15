@@ -10,7 +10,7 @@
   <meta name="author" content="Jatoth Ramakrishna">
   <meta name="copyright" content="{{ year|default(2026) }} Jatoth Ramakrishna. Independently architected, developed, authored and owned by Jatoth Ramakrishna.">
   <meta name="csrf-token" content="{{ csrf_token }}">
-  <meta name="referrer" content="no-referrer">
+  <meta name="referrer" content="strict-origin">
   {% block robots %}<meta name="robots" content="noindex,nofollow">{% endblock %}
   <link rel="canonical" href="{{ site_origin|default(request.host_url.rstrip('/')) }}{{ request.path }}">
   <title>{% block title %}{{ t('page_title') }}{% endblock %}</title>
