@@ -1,0 +1,17 @@
+CYBER SURAKSHA 2.0
+
+Architect, Developer, Author and Sole Owner: Jatoth Ramakrishna
+Purpose: Public cybersecurity awareness and operational digital safety.
+Ownership: Independently architected, developed, authored and owned by Jatoth Ramakrishna.
+Support and funding: Built independently, without institutional support, sponsorship or external funding.
+Affiliation: No institutional, corporate or government affiliation or endorsement.
+
+Copyright (c) 2026 Jatoth Ramakrishna. All rights reserved.
+Languages: English, हिन्दी, తెలుగు
+Visual identity: Teal hexagon with the CS monogram.
+Citizen privacy: Scam Checker and Action Planner run on the user's device.
+Pasted tool text is never transmitted to or stored by this site's backend.
+Hosting serves website pages and static assets; those requests contain no tool input.
+Accounts: Registration, email OTP and complaint submission are not active on this static deployment.
+The separate account service is deployed for owner access; public email delivery still requires configuration.
+Official resources: Reference links only; their respective owners remain responsible for their content.
