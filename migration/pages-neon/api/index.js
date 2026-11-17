@@ -4,13 +4,13 @@ import { Pool } from 'pg';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { randomUUID } from 'node:crypto';
 
-const required = ['DATABASE_URL', 'AUTH_JWKS_URL', 'AUTH_ISSUER', 'AUTH_AUDIENCE', 'CORS_ORIGIN'];
+const required = ['DATABASE_URL', 'NEON_AUTH_JWKS_URL', 'NEON_AUTH_BASE_URL', 'CORS_ORIGIN'];
 for (const name of required) if (!process.env[name]) throw new Error('Missing required backend setting: ' + name);
 const origin = new URL(process.env.CORS_ORIGIN).origin;
 if (origin !== process.env.CORS_ORIGIN || !origin.startsWith('https://')) {
   throw new Error('CORS_ORIGIN must be one exact HTTPS origin');
 }
-const jwks = createRemoteJWKSet(new URL(process.env.AUTH_JWKS_URL));
+const jwks = createRemoteJWKSet(new URL(process.env.NEON_AUTH_JWKS_URL));
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 5, connectionTimeoutMillis: 5000 });
 const app = new Hono();
 app.use('*', async (c, next) => {
@@ -34,7 +34,7 @@ app.use('/v1/*', async (c, next) => {
   if (!match) return c.json({ error: 'authentication_required' }, 401);
   try {
     const { payload } = await jwtVerify(match[1], jwks, {
-      issuer: process.env.AUTH_ISSUER, audience: process.env.AUTH_AUDIENCE,
+      issuer: new URL(process.env.NEON_AUTH_BASE_URL).origin,
       algorithms: ['EdDSA'], clockTolerance: 10
     });
     if (typeof payload.sub !== 'string' || !payload.sub) throw new Error('Missing subject');
