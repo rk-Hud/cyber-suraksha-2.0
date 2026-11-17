@@ -1,9 +1,10 @@
 ---
-name: "Bug report"
-about: "Report a reproducible, non-sensitive project defect"
+name: Bug report
+about: Report a reproducible, non-sensitive project defect
 title: "[Bug] "
-labels: ["bug"]
-assignees: []
+labels: bug
+assignees: ''
+
 ---
 
 ## Affected component

@@ -1,9 +1,10 @@
 ---
-name: "Feature request"
-about: "Propose a safe and appropriately scoped improvement"
+name: Feature request
+about: Propose a safe and appropriately scoped improvement
 title: "[Feature] "
-labels: ["enhancement"]
-assignees: []
+labels: enhancement
+assignees: ''
+
 ---
 
 ## User need
