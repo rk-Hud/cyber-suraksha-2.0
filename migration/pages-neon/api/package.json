@@ -1,0 +1,13 @@
+{
+  "name": "cyber-suraksha-pages-neon-api",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {"node": ">=24"},
+  "dependencies": {
+    "hono": "^4.10.0",
+    "jose": "^6.1.0",
+    "pg": "^8.16.0",
+    "@neon/functions": "^0.1.0"
+  }
+}
