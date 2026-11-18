@@ -66,7 +66,10 @@
       google.renderButton(button, { type: 'standard', theme: 'outline', size: 'large', text: 'signin_with' });
     };
     script.onerror = () => { notice.textContent = copy[2]; };
-    document.head.append(script);
+    // Do not load Google identity scripts until the visitor expressly opts in.
+    checkbox.addEventListener('change', () => {
+      if (checkbox.checked && !script.isConnected) document.head.append(script);
+    });
   }
   launch();
 })(window);
