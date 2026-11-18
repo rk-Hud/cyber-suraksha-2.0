@@ -98,7 +98,7 @@ def main():
  if u.scheme!='https' or not u.hostname or u.path or u.query or u.fragment:raise ValueError('Invalid canonical origin')
  api_url,csp_connect=api_configuration(site.get('api_url',''))
  google_client_id=site.get('google_client_id','')
- if not isinstance(google_client_id,str) or google_client_id and not re.fullmatch(r'[0-9]+-[A-Za-z0-9_-]+\\.apps\\.googleusercontent\\.com',google_client_id):raise ValueError('Invalid Google OAuth web client ID')
+ if not isinstance(google_client_id,str) or google_client_id and not re.fullmatch(r'[0-9]+-[A-Za-z0-9_-]+\.apps\.googleusercontent\.com',google_client_id):raise ValueError('Invalid Google OAuth web client ID')
  agencies=read_json('agencies.json');advisory=read_json('advisory.json')
  if len(agencies)!=20 or len({a['id'] for a in agencies})!=20:raise ValueError('Expected twenty unique agencies')
  environment=Environment(loader=FileSystemLoader(SOURCE/'templates'),autoescape=select_autoescape(('html',)),undefined=StrictUndefined)
