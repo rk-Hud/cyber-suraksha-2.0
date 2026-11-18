@@ -12,6 +12,8 @@ Visual identity: Teal hexagon with the CS monogram.
 Citizen privacy: Scam Checker and Action Planner run on the user's device.
 Pasted tool text is never transmitted to or stored by this site's backend.
 Hosting serves website pages and static assets; those requests contain no tool input.
-Accounts: Registration, email OTP and complaint submission are not active on this static deployment.
-The separate account service is deployed for owner access; public email delivery still requires configuration.
+Accounts: The static account interface connects only to the configured private-records API.
+Readiness checks keep registration and email sign-in closed until real mail delivery is available.
+Account names, email addresses and submitted complaints are stored by the account service.
+Owner administration requires email verification and a recent authenticator code.
 Official resources: Reference links only; their respective owners remain responsible for their content.

@@ -28,7 +28,8 @@
     if (['en', 'hi', 'te'].includes(lang)) {
       // A fixed path keeps pasted text and incident details out of the URL.
       const basePath = document.documentElement.dataset?.basePath || "";
-      window.location.assign(`${basePath}/${lang}/`);
+      const account = document.documentElement.dataset?.accountPage === "true" ? "account.html" : "";
+      window.location.assign(`${basePath}/${lang}/${account}`);
     }
   });
 
@@ -43,7 +44,8 @@
   }
   document.addEventListener('click', (event) => {
     const link = event.target.closest?.('a');
-    if (link) openLinkedSection(link.getAttribute('href'));
+    // Anchor.hash also handles project-prefixed navigation when a section was closed manually.
+    if (link) openLinkedSection(link.hash || link.getAttribute('href'));
   });
   window.addEventListener('hashchange', () => openLinkedSection(window.location.hash));
   openLinkedSection(window.location.hash);
@@ -51,7 +53,7 @@
   const normalize = (value) => value.normalize('NFKC').toLocaleLowerCase().trim();
   const agencySearch = document.getElementById('agency-search');
   const agencyGroup = document.getElementById('agency-group');
-  const agencyRows = [...document.querySelectorAll('#agency-body tr')];
+  let agencyRows = [...document.querySelectorAll('#agency-body tr')];
   function filterAgencies() {
     const query = normalize(agencySearch?.value || '');
     const group = agencyGroup?.value || 'all';
@@ -68,5 +70,9 @@
   }
   agencySearch?.addEventListener('input', filterAgencies);
   agencyGroup?.addEventListener('change', filterAgencies);
+  document.addEventListener('cyber-resources-updated', () => {
+    agencyRows = [...document.querySelectorAll('#agency-body tr')];
+    filterAgencies();
+  });
 
 })();
