@@ -58,3 +58,14 @@ The output must be empty or a previous generated site; the builder refuses to re
 ### Identity widget style compatibility
 
 The current Google widget injects a stylesheet and layout attributes. Google-enabled account pages therefore allow that observed stylesheet by its SHA-256 hash in `style-src-elem`, plus inline **style attributes** via `style-src-attr`. The exception is absent on other pages and when Google is unconfigured. Script policy remains exact and does not allow inline scripts or evaluation. This is checked in current Chromium; browsers without CSP3 style directives may not display the widget correctly. If Google changes its injected stylesheet, review the change and rerun the actual-widget check before updating the allowed hash. A hash mismatch fails closed for that stylesheet; do not relax script policy to work around it.
+
+## Published isolated Google test workspace
+
+The checked-in `config/google-test.json` contains only public addresses, the public OAuth Client ID and the test-workspace flag. The tester allowlist and every secret stay in the staging Function environment. This temporary branch expires on 25 November 2026; verify its current deployment before reusing the configuration.
+
+```sh
+python scripts/export_site.py --config config/google-test.json --output build/google-test
+python scripts/verify_pages.py --config config/google-test.json --site build/google-test
+```
+
+Publish that output only under `docs/google-test` on the Pages branch. It must not replace the ordinary website output or its production API setting. All test pages request no indexing and identify the temporary fictional-data workspace. A rendered widget or popup does not establish genuine citizen login.
