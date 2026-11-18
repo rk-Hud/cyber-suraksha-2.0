@@ -32,3 +32,12 @@ Thumbs.db
 # Editors
 .vscode/
 .idea/
+
+# Node builds, browser test state and private operational files
+node_modules/
+dist/
+.secrets/
+.build-templates/
+playwright-report/
+test-results/
+web/pages/docs/

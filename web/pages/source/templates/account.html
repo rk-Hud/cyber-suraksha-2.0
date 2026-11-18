@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="shell section account-workspace" id="account-app" aria-labelledby="account-title">
+  <div class="section-heading"><p class="eyebrow">{{ t('portal_kicker') }}</p><h1 id="account-title">{{ t('account_page_title') }}</h1><p>{{ t('portal_boundary') }}</p></div>
+  <div id="account-service-status" class="account-service-status" role="status"><p>{{ t('account_connecting') }}</p></div>
+  <div id="account-message" class="message-banner" role="status" aria-live="polite" hidden></div>
+  <p class="field-hint memory-note">{{ t('account_memory_note') }}</p>
+  <nav id="account-navigation" class="workspace-nav" aria-label="{{ t('nav_account') }}">
+    <button type="button" data-account-view="login">{{ t('sign_in') }}</button><button type="button" data-account-view="register">{{ t('create_account') }}</button><button type="button" data-account-view="admin-login">{{ t('admin_sign_in') }}</button>
+  </nav>
+  <div id="signed-in-identity" class="account-identity" hidden></div>
+
+  <section data-account-panel="login" class="auth-layout">
+    <div class="auth-intro"><h2 id="login-heading">{{ t('account_login_title') }}</h2><p id="login-description">{{ t('portal_login_body') }}</p><p class="boundary-note">{{ t('portal_private') }}</p></div>
+    <div class="surface auth-panel"><form id="account-login" class="stack-form" method="post" action="#" data-email-required>
+      <div><label class="field-label" for="login-email">{{ t('email') }}</label><input id="login-email" name="email" type="email" required autocomplete="username" maxlength="254"></div>
+      <div><label class="field-label" for="login-password">{{ t('password') }}</label><input id="login-password" name="password" type="password" required autocomplete="current-password" minlength="12" maxlength="128"><p class="field-hint">{{ t('password_hint') }}</p></div>
+      <button class="button button-dark" type="submit">{{ t('sign_in') }} →</button>
+    </form><button type="button" class="plain-button auth-secondary" data-account-view="forgot">{{ t('forgot_password') }}</button></div>
+  </section>
+
+  <section data-account-panel="register" class="auth-layout" hidden>
+    <div class="auth-intro"><h2>{{ t('account_register_title') }}</h2><p>{{ t('portal_register_body') }}</p><p class="boundary-note">{{ t('portal_private') }}</p></div>
+    <div class="surface auth-panel"><form id="account-register" class="stack-form" method="post" action="#" data-registration-required>
+      <div><label class="field-label" for="register-name">{{ t('name') }}</label><input id="register-name" name="name" required autocomplete="name" minlength="2" maxlength="100"></div>
+      <div><label class="field-label" for="register-email">{{ t('email') }}</label><input id="register-email" name="email" type="email" required autocomplete="email" maxlength="254"><p class="field-hint">{{ t('email_hint') }}</p></div>
+      <div><label class="field-label" for="register-password">{{ t('password') }}</label><input id="register-password" name="password" type="password" required autocomplete="new-password" minlength="12" maxlength="128"><p class="field-hint">{{ t('password_hint') }}</p></div>
+      <div><label class="field-label" for="register-confirm">{{ t('password_confirm') }}</label><input id="register-confirm" name="confirmPassword" type="password" required autocomplete="new-password" minlength="12" maxlength="128"></div>
+      <label class="checkbox-label"><input type="checkbox" name="consent" required><span>{{ t('register_consent') }}</span></label>
+      <button class="button button-dark" type="submit">{{ t('register_submit') }}</button>
+    </form></div>
+  </section>
+
+  <section data-account-panel="verify" class="auth-layout" hidden>
+    <div class="auth-intro"><h2>{{ t('verify_title') }}</h2><p>{{ t('verify_intro') }}</p><p class="field-hint">{{ t('account_stay_here') }}</p><p class="boundary-note">{{ t('otp_privacy') }}</p></div>
+    <div class="surface auth-panel"><form id="account-verify" class="stack-form" method="post" action="#">
+      <label class="field-label" for="verify-code">{{ t('otp') }}</label><input id="verify-code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" minlength="6" maxlength="6" required>
+      <button class="button button-dark" type="submit">{{ t('otp_submit') }}</button>
+    </form><button type="button" class="plain-button auth-secondary" data-account-view="login">{{ t('account_start_again') }}</button></div>
+  </section>
+
+  <section data-account-panel="forgot" class="auth-layout" hidden>
+    <div class="auth-intro"><h2>{{ t('forgot_title') }}</h2><p>{{ t('forgot_intro') }}</p></div>
+    <div class="surface auth-panel"><form id="account-forgot" class="stack-form" method="post" action="#" data-email-required>
+      <label class="field-label" for="forgot-email">{{ t('email') }}</label><input id="forgot-email" name="email" type="email" autocomplete="username" maxlength="254" required>
+      <button class="button button-dark" type="submit">{{ t('forgot_submit') }}</button>
+    </form><button type="button" class="plain-button auth-secondary" data-account-view="login">{{ t('back_sign_in') }}</button></div>
+  </section>
+
+  <section data-account-panel="reset" class="auth-layout" hidden>
+    <div class="auth-intro"><h2>{{ t('reset_title') }}</h2><p>{{ t('reset_intro') }}</p><p class="field-hint">{{ t('account_stay_here') }}</p></div>
+    <div class="surface auth-panel"><form id="account-reset" class="stack-form" method="post" action="#">
+      <div><label class="field-label" for="reset-code">{{ t('otp') }}</label><input id="reset-code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required></div>
+      <div><label class="field-label" for="reset-password">{{ t('password') }}</label><input id="reset-password" name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required><p class="field-hint">{{ t('password_hint') }}</p></div>
+      <div><label class="field-label" for="reset-confirm">{{ t('password_confirm') }}</label><input id="reset-confirm" name="confirmPassword" type="password" autocomplete="new-password" minlength="12" maxlength="128" required></div>
+      <button class="button button-dark" type="submit">{{ t('reset_submit') }}</button>
+    </form></div>
+  </section>
+
+  <section data-account-panel="cases" class="workspace" hidden>
+    <div class="workspace-heading"><div><h2>{{ t('cases_title') }}</h2><p>{{ t('cases_intro') }}</p></div><button type="button" class="button button-dark" data-account-view="new-case">{{ t('new_complaint') }} →</button></div>
+    <div id="citizen-cases" class="records-region"></div><div id="citizen-pagination" class="pagination"></div>
+  </section>
+
+  <section data-account-panel="new-case" class="workspace" hidden>
+    <div class="workspace-heading"><div><h2>{{ t('new_case_title') }}</h2><p>{{ t('new_case_intro') }}</p></div></div>
+    <div class="case-form-layout"><div class="surface form-panel"><form id="account-new-case" class="stack-form" method="post" action="#">
+      <div><label class="field-label" for="case-subject">{{ t('case_subject') }}</label><input id="case-subject" name="subject" required minlength="5" maxlength="160" autocomplete="off"><p class="field-hint">{{ t('subject_hint') }}</p></div>
+      <div><label class="field-label" for="case-category">{{ t('case_category') }}</label><select id="case-category" name="category">{% for category in ['financial','account','harassment','malware','other'] %}<option value="{{ category }}">{{ t('category_' ~ category) }}</option>{% endfor %}</select></div>
+      <div><label class="field-label" for="case-details">{{ t('case_details') }}</label><textarea id="case-details" name="details" rows="9" required minlength="20" maxlength="5000" autocomplete="off" spellcheck="false"></textarea><p class="field-hint">{{ t('case_details_hint') }}</p></div>
+      <label class="checkbox-label"><input type="checkbox" name="consent" required><span>{{ t('case_consent') }}</span></label>
+      <div class="button-row"><button class="button button-dark" type="submit">{{ t('case_submit') }}</button><button class="button button-secondary" type="button" data-account-view="cases">{{ t('cancel') }}</button></div>
+    </form></div><aside class="boundary-note"><strong>{{ t('service_privacy') }}</strong><p>{{ t('portal_private') }}</p></aside></div>
+  </section>
+
+  <section data-account-panel="case-detail" class="workspace" hidden><div id="case-detail-content"></div></section>
+
+  <section data-account-panel="mfa" class="auth-layout" hidden>
+    <div class="auth-intro"><h2>{{ t('mfa_title') }}</h2><p>{{ t('mfa_intro') }}</p><p class="boundary-note">{{ t('mfa_secret_note') }}</p></div>
+    <div class="surface auth-panel"><div id="mfa-enabled"><form id="account-mfa-verify" class="stack-form" method="post" action="#"><label class="field-label" for="mfa-code">{{ t('mfa_code') }}</label><input id="mfa-code" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required><button class="button button-dark" type="submit">{{ t('mfa_submit') }}</button></form></div>
+      <div id="mfa-enrollment" hidden><h3>{{ t('mfa_setup_title') }}</h3><p>{{ t('mfa_setup_intro') }}</p><button id="mfa-start" type="button" class="button button-secondary">{{ t('mfa_start') }}</button><div id="mfa-secret" class="setup-secret" hidden><h4>{{ t('mfa_setup_secret') }}</h4><code id="mfa-secret-value"></code><label class="field-label" for="mfa-setup-uri">{{ t('mfa_setup_uri') }}</label><textarea id="mfa-setup-uri" readonly rows="3"></textarea></div><form id="account-mfa-confirm" class="stack-form" method="post" action="#" hidden><label class="field-label" for="mfa-confirm-code">{{ t('mfa_code') }}</label><input id="mfa-confirm-code" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required><button class="button button-dark" type="submit">{{ t('mfa_setup_confirm') }}</button></form></div>
+    </div>
+  </section>
+
+  <section data-account-panel="admin" class="workspace" hidden><div class="workspace-heading"><div><h2>{{ t('admin_title') }}</h2><p>{{ t('admin_intro') }}</p></div><button type="button" class="button button-secondary" data-account-view="mfa">{{ t('mfa_settings') }}</button></div><div id="admin-summary"></div><h3>{{ t('admin_complaints') }}</h3><div id="admin-cases"></div><div id="admin-pagination" class="pagination"></div><section class="audit-section"><h3>{{ t('login_activity_title') }}</h3><p>{{ t('login_claimed_identity') }}</p><div id="admin-logins"></div></section><section class="audit-section"><h3>{{ t('admin_audit') }}</h3><div id="admin-audit"></div></section></section>
+
+  <section data-account-panel="users" class="workspace" hidden><div class="workspace-heading"><div><h2>{{ t('admin_users_title') }}</h2><p>{{ t('admin_users_intro') }}</p></div></div><div id="admin-users"></div><div id="users-pagination" class="pagination"></div></section>
+
+  <section data-account-panel="content" class="workspace" hidden><div class="workspace-heading"><div><h2>{{ t('admin_content_title') }}</h2><p>{{ t('admin_content_intro') }}</p></div></div><p class="content-help">{{ t('content_help') }}</p><div id="admin-content"></div></section>
+</section>
+<noscript><div class="shell boundary-note">{{ t('javascript_notice') }}</div></noscript>
+{% endblock %}

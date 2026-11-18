@@ -1,0 +1,8 @@
+node_modules/
+.venv/
+__pycache__/
+.build-templates/
+browser-artifacts/
+.env
+.env.*
+!.env.example

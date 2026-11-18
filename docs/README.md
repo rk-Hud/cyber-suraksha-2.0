@@ -6,6 +6,8 @@
 
 ## Start here
 
+Current GitHub Pages and account-service work: [deployment status](ACCOUNT_SERVICE_STATUS.md), [operator guide](ACCOUNT_SERVICE_OPERATIONS.md), [API contract](../services/account-api/API.md), and [Pages source](../web/pages/). The older service-specific guides below describe their own deployments.
+
 | Topic | Document |
 | --- | --- |
 | Project summary | [Project overview](PROJECT_OVERVIEW.md) |

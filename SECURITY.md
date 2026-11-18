@@ -1,41 +1,43 @@
-# Security and responsible disclosure
+# Security and vulnerability disclosure
 
-[Repository](README.md) · [Owner access review](docs/OWNER_PORTAL_ACCESS_REVIEW.md) · [Release readiness](docs/RELEASE_READINESS.md)
+CYBER SURAKSHA 2.0 is independently architected, developed, authored and solely owned by **Jatoth Ramakrishna** for public cybersecurity awareness and operational digital safety. It receives no institutional support, sponsorship or external funding and has no corporate or government affiliation or endorsement.
 
-CYBER SURAKSHA 2.0 consists of a **public awareness service**, an **independent owner-only portal pilot**, and preserved **historical training code**. Security statements apply to a named component and verified revision; they are not universal certifications or guarantees.
+Copyright © 2026 Jatoth Ramakrishna. All rights reserved.
 
-## Reporting vulnerabilities
+## Reporting a vulnerability
 
-For a non-sensitive defect, use the repository issue tracker and synthetic reproduction data. For potentially sensitive issues, use the repository's private reporting option if enabled or arrange a private contact with its maintainer. Do not publish active exploits, identities, raw case contents, credentials, tokens, OTPs, backup files or secret-bearing logs. Unauthorized testing of third-party sites, service providers and real users is not permitted.
+The owner-designated repository is [rk-Hud/cyber-suraksha-2.0](https://github.com/rk-Hud/cyber-suraksha-2.0). Use **Security → Report a vulnerability** to send a private report to Jatoth Ramakrishna when that feature is enabled. Private reporting availability has not been verified. If it is unavailable, open a minimal issue requesting a private channel without exploit details, personal information, tokens or keys. No disclosure email or working private endpoint has been invented.
 
-## Data handling
+Include the affected release or page, component, a minimal reproduction with fictional data, impact and a proposed correction if known. Do not send citizen complaints or pasted checker text. There is no guaranteed response time or bug bounty. Coordinate a disclosure date with the owner.
 
-- Public awareness site: educational content and browser-based learning tools; no official complaint filing or real citizen case intake.
-- Owner pilot: intended for controlled owner testing with private-mode access and no public registration; **no real victim, payment or citizen-sensitive data should be entered into an unreviewed pilot**.
-- Earlier Flask app: local fictional incidents and simulated SOC alerts, with SQLite data kept private.
-- External providers: hosting, mail or optional reputation services may process data or connection metadata under their own conditions. Verify actual configuration before making claims about collection or retention.
+## Permitted research
 
-## Authenticated portal controls
+Test a local installation or an environment for which you have explicit authorization. Do not access others' data, steal credentials, disrupt availability, conduct social engineering or perform destructive tests. Official agency links do not grant permission to test those services.
 
-![Owner access flow](docs/assets/owner-access-flow.svg)
+## Hosted site boundary
 
-The pilot code includes owner-role checks, email verification, authenticated sessions, recent authenticator MFA and CSRF verification. Its [pilot Blueprint](deploy/citizen-owner-portal/render-free-pilot.yaml) sets `PRIVATE_MODE=1` and `PUBLIC_REGISTRATION=0`. These source features **do not establish** that the live deployment has passed full authorization testing, independent security review or backup validation.
+GitHub Pages serves the English, Hindi and Telugu public website and account interface as static files. Account requests use the separately configured HTTPS Neon Function API. The database is hosted on Neon; no database credential, signing key, mail key or administrator secret is sent to the browser or included in the static deployment.
 
-Read [portal security details](deploy/citizen-owner-portal/SECURITY.md) and [verification steps](docs/OWNER_PORTAL_ACCESS_REVIEW.md).
+Account availability is read from the API health response. Registration and email sign-in remain disabled when the API reports email delivery unavailable. A deployed interface is not evidence of a working OTP delivery service. Public registration must stay closed until a sending domain is verified, private mail credentials are configured, and delivery to an external test mailbox succeeds. The owner’s existing authentication records and MFA must be preserved during migration.
 
-## Operational minimums
+Citizen sessions use opaque bearer tokens kept in page memory. Requests omit browser credentials and referrers; tokens and private records are not written to browser storage or URL parameters. Reloading, closing or changing language requires a new sign-in. Page history transitions clear account records and credentials from the account DOM. The API hashes session and flow tokens, verifies email OTPs, enforces expiration and attempt limits, and checks account ownership for private case access. Administrator records and writes require the configured owner identity and recent authenticator verification. A hidden section is not authorization.
 
-- HTTPS with correctly configured proxy and host validation.
-- Separate high-entropy session, OTP and TOTP-encryption secrets; never commit them.
-- Role-checked operations, recent MFA, CSRF protection and rate limits.
-- Persistent database, data minimization, retention/deletion procedures and tested backups.
-- Real mail sender verification, operational monitoring and incident-response readiness.
-- Independently verified testing before accepting production personal information.
+The approved content editor accepts structured multilingual text and validated links. It does not execute HTML, scripts, SQL or server commands. Advisory text is authored guidance, not a live threat feed. Owner actions and complaint status changes are recorded. Status notifications are attempted after committed case updates and retained in a durable queue for retry. The owner can request manual delivery of one queued notice. The in-app case timeline does not depend on email delivery.
 
-## Public safety notice
+## Citizen privacy
 
-This project is **not** a government, bank, police or CERT-In complaint channel. For an actual Indian cybercrime complaint visit [cybercrime.gov.in](https://cybercrime.gov.in/); for urgent financial cyber fraud call **1930** and contact the bank through its official channel.
+Checker text, planner selections and quiz answers remain in browser memory and are not transmitted or persisted by these tools. Citizen registration, email verification and support case submission are separate, explicit service requests: account names, email addresses and submitted case content are stored by the account service and visible to the account holder and authorized owner. Do not include passwords, OTPs, payment PINs or unnecessary identity documents in a complaint.
 
-## Rights and third-party materials
+There are no analytics, advertising pixels, external fonts or cloud language analysis requests. Changing language loads another page and clears account sign-in. The checker and planner never send pasted text to the account API, resolve pasted links, or add input to URLs.
 
-Original software and project material, third-party dependencies, and [illustrative media](docs/VISUAL_ASSETS.md) have different license and ownership boundaries. The top-level [MIT License](LICENSE) governs software reuse according to its terms. The project is independently maintained and makes no claim to external government approval.
+Normal requests for website pages and assets still occur. Hosting infrastructure can observe connection metadata such as IP addresses; verify its retention policy separately. External destinations have their own privacy practices.
+
+Local rules can miss new attacks and flag legitimate text. The finite domain catalogue provides context, not an all-world safety certificate. HTTPS or a familiar domain cannot establish that a page or message is safe. HTTP produces an explicit transport warning. Shortened links remain unverified because their final destinations are not resolved. Scores are warning indicators, not probabilities of fraud or accuracy measurements. The checker never opens pasted links. The Safety Assistant is a local reference guide, not a live reporting or emergency service.
+
+## Maintenance
+
+The generated CSP blocks native form submissions and permits connections only to the same site and the exact configured API origin. Scripts, styles and tool data are served locally. GitHub Pages controls HTTP response headers; CSP in HTML cannot supply a frame-ancestors policy. The API separately sends restrictive response headers and accepts only configured browser origins. Dynamic tool output uses safe text APIs. Private owner records, credentials and registration papers are never published. A collapsed panel is not a privacy boundary.
+
+Review JavaScript changes for accidental data collection, update all three translations together and rerun rendered-content and tool checks before publishing. Keep production secrets and databases out of the static directory. Have qualified readers review Hindi and Telugu wording before broad publication.
+
+This is an independent awareness resource, not a police reporting portal, emergency service or managed security operations center. For financial cyber fraud in India, promptly contact your bank, call 1930 and use [cybercrime.gov.in](https://cybercrime.gov.in/). Recovery is not guaranteed.

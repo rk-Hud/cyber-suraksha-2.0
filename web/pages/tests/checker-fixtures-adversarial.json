@@ -1,0 +1,275 @@
+[
+  {
+    "input": "https://amazon.in",
+    "expectations": {
+      "verdict": "known_domain",
+      "maximumScore": 0,
+      "notRules": [
+        "brand_lookalike",
+        "brand_unverified",
+        "insecure_transport"
+      ]
+    },
+    "reason": "An exact HTTPS catalogue hostname should be recognised without treating that recognition as a safety verdict."
+  },
+  {
+    "input": "https://amazon.com/gp/help",
+    "expectations": {
+      "verdict": "known_domain",
+      "maximumScore": 0,
+      "notRules": [
+        "brand_lookalike",
+        "brand_unverified"
+      ]
+    },
+    "reason": "A known hostname remains recognised on an ordinary path; the path contents are not checked live."
+  },
+  {
+    "input": "https://AMAZON.IN./",
+    "expectations": {
+      "verdict": "known_domain",
+      "maximumScore": 0,
+      "notRules": [
+        "brand_lookalike"
+      ]
+    },
+    "reason": "Case and a DNS trailing dot should normalise to the same exact hostname boundary."
+  },
+  {
+    "input": "https://arnazon.in",
+    "expectations": {
+      "hasRules": [
+        "brand_lookalike"
+      ],
+      "minimumScore": 60
+    },
+    "reason": "The letters rn can visually imitate m; this is a lookalike finding, not proof of a live malicious site."
+  },
+  {
+    "input": "https://amaz0n.in",
+    "expectations": {
+      "hasRules": [
+        "brand_lookalike"
+      ],
+      "minimumScore": 60
+    },
+    "reason": "The digit zero can imitate the o in a familiar brand domain."
+  },
+  {
+    "input": "https://аmazon.in",
+    "expectations": {
+      "hasRules": [
+        "brand_lookalike",
+        "punycode"
+      ],
+      "minimumScore": 60
+    },
+    "reason": "The first letter is Cyrillic U+0430, not Latin a; URL normalisation must not make this an exact catalogue match."
+  },
+  {
+    "input": "https://xn--mazon-3ve.in/",
+    "expectations": {
+      "hasRules": [
+        "brand_lookalike",
+        "punycode"
+      ],
+      "minimumScore": 60
+    },
+    "reason": "The same Unicode lookalike pasted in its ASCII xn-- form should receive equivalent scrutiny."
+  },
+  {
+    "input": "https://amazon.in.attacker.example/login",
+    "expectations": {
+      "hasRules": [
+        "brand_unverified"
+      ],
+      "minimumScore": 25
+    },
+    "reason": "A familiar official domain at the start of an unrelated hostname does not establish ownership."
+  },
+  {
+    "input": "https://amazon.in@evil.example/",
+    "expectations": {
+      "hasRules": [
+        "userinfo"
+      ],
+      "minimumScore": 25
+    },
+    "reason": "The name before @ is URL user information, while the actual destination is evil.example."
+  },
+  {
+    "input": "https://amazon-river.example/article",
+    "expectations": {
+      "verdict": "unverified",
+      "maximumScore": 0,
+      "notRules": [
+        "brand_lookalike",
+        "brand_unverified"
+      ]
+    },
+    "reason": "A different subject containing a common brand word should not automatically be declared an impersonation attempt."
+  },
+  {
+    "input": "https://neighbourhood-library.example/catalogue",
+    "expectations": {
+      "verdict": "unverified",
+      "maximumScore": 0,
+      "notRules": [
+        "brand_lookalike",
+        "brand_unverified"
+      ]
+    },
+    "reason": "A hostname absent from the finite catalogue is unverified rather than known safe or automatically unsafe."
+  },
+  {
+    "input": "Want to know number of SIMs in your name? Download Sanchar Saathi to check: Android: https://t.jio/ISATHI/MWxHL9 iOS: https://t.jio/ISATHI/ios Dept of Telecom, Govt of India",
+    "expectations": {
+      "verdict": "unverified",
+      "hasRules": [
+        "shortener"
+      ],
+      "maximumScore": 24
+    },
+    "reason": "This reproduced SMS has concealed redirect destinations; the local checker should explain that limitation rather than assert the text is real or fraudulent."
+  },
+  {
+    "input": "http://amazon.in",
+    "expectations": {
+      "hasRules": [
+        "insecure_transport"
+      ],
+      "minimumScore": 25,
+      "notRules": [
+        "brand_lookalike"
+      ]
+    },
+    "reason": "A recognised domain does not cancel the explicit unencrypted HTTP transport warning."
+  },
+  {
+    "input": "http://ordinary-site.example/help",
+    "expectations": {
+      "hasRules": [
+        "insecure_transport"
+      ],
+      "minimumScore": 25
+    },
+    "reason": "An HTTP URL must receive a prominent transport warning regardless of brand recognition."
+  },
+  {
+    "input": "https://echallan.parivahan.gov.in",
+    "expectations": {
+      "maximumScore": 0,
+      "notRules": [
+        "challan_host",
+        "government_suffix",
+        "brand_lookalike"
+      ]
+    },
+    "reason": "The exact national e-challan hostname is within the configured official domain boundary."
+  },
+  {
+    "input": "https://echallan-parivahan.xyz",
+    "expectations": {
+      "hasRules": [
+        "challan_host"
+      ],
+      "minimumScore": 60
+    },
+    "reason": "E-challan branding outside parivahan.gov.in requires an explicit impersonation finding."
+  },
+  {
+    "input": "https://echallan.parivahan.gov.in.attacker.example/pay",
+    "expectations": {
+      "hasRules": [
+        "government_suffix",
+        "challan_host"
+      ],
+      "minimumScore": 60
+    },
+    "reason": "Government wording embedded in a different hostname must not pass the official-domain boundary check."
+  },
+  {
+    "input": "Share your OTP to confirm your account.",
+    "expectations": {
+      "hasRules": [
+        "credential_request"
+      ],
+      "minimumScore": 25
+    },
+    "reason": "A positive request for a secret is a warning even when no URL is present."
+  },
+  {
+    "input": "Never share your OTP.",
+    "expectations": {
+      "verdict": "no_signs",
+      "maximumScore": 0,
+      "notRules": [
+        "credential_request"
+      ]
+    },
+    "reason": "Ordinary English safety advice must not be inverted into a request for credentials."
+  },
+  {
+    "input": "ओटीपी साझा न करें।",
+    "expectations": {
+      "verdict": "no_signs",
+      "maximumScore": 0,
+      "notRules": [
+        "credential_request"
+      ]
+    },
+    "reason": "Hindi advice not to share an OTP is not a request to disclose it."
+  },
+  {
+    "input": "మీ ఓటీపీ పంచుకోవద్దు.",
+    "expectations": {
+      "verdict": "no_signs",
+      "maximumScore": 0,
+      "notRules": [
+        "credential_request"
+      ]
+    },
+    "reason": "Telugu advice not to share an OTP should remain a negative instruction."
+  },
+  {
+    "input": "http://192.0.2.10/login",
+    "expectations": {
+      "hasRules": [
+        "ip_host",
+        "insecure_transport"
+      ],
+      "minimumScore": 25
+    },
+    "reason": "A documentation-only numeric address still exercises the numeric-host and HTTP structural rules without accessing a real service."
+  },
+  {
+    "input": "http://2130706433/login",
+    "expectations": {
+      "hasRules": [
+        "ip_host",
+        "insecure_transport"
+      ],
+      "minimumScore": 25
+    },
+    "reason": "WHATWG URL normalisation turns the numeric IPv4 form into an address; string-only dotted-quad matching would miss it."
+  },
+  {
+    "input": "https://ama​zon.in",
+    "expectations": {
+      "hasRules": [
+        "hidden_characters"
+      ]
+    },
+    "reason": "A zero-width character should be explained even when removing it reveals a recognised hostname."
+  },
+  {
+    "input": "Malformed escape %E0%A4%A alongside https://amazon.in",
+    "expectations": {
+      "notRules": [
+        "credential_request",
+        "brand_lookalike"
+      ]
+    },
+    "reason": "A malformed percent escape must not abort local analysis of the remaining valid address."
+  }
+]
