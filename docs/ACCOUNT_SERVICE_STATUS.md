@@ -5,7 +5,7 @@ Verified 18 November 2026, 08:29 IST. This record distinguishes deployed code fr
 | Feature | Current result |
 | --- | --- |
 | Public multilingual site | Live on GitHub Pages; English, Hindi and Telugu |
-| Citizen account interface | Built and connected to the production account API in this revision |
+| Citizen account interface | Live on GitHub Pages and connected to the production account API |
 | Registration and password/email-OTP login | Implemented and tested; public activation remains closed because production email sending is not configured |
 | Email OTP verification | Five-minute challenges, attempt limits and flow binding tested; no claim of external inbox delivery |
 | Private complaint submission | Protected API deployed; requires a verified signed-in citizen, so fresh public intake is not active yet |
@@ -34,6 +34,16 @@ Production health: https://br-holy-darkness-az8i1rma-csportalapi.compute.c-3.ap-
 ## Verification
 
 The new API passed **43 tests with zero skips**, including bidirectional Python password/Fernet compatibility, OTP/replay/expiry, private case ownership, role and recent MFA checks, password-reset races, concurrent version checks and notification failures. The frontend passed **69 Node tests** and **4 Python build tests**. Chromium checks covered all three languages at 390, 768 and 1440 pixels. These are bounded checks of this implementation, not a claim of universal security certification.
+
+## Published revision and hosted checks
+
+- Source revision: [`d8d2c09`](https://github.com/rk-Hud/cyber-suraksha-2.0/commit/d8d2c0990868fc887c0f3c67b29e674d6b24b9e1).
+- Pages revision: [`04e62cf`](https://github.com/rk-Hud/cyber-suraksha-2.0/commit/04e62cf398da09d1243d31db7e7fa68d8b858683).
+- [Account API and Pages CI](https://github.com/rk-Hud/cyber-suraksha-2.0/actions/runs/44227506271): successful fresh-checkout install, disposable PostgreSQL tests and Pages checks.
+- [Pages deployment](https://github.com/rk-Hud/cyber-suraksha-2.0/actions/runs/44227572078): successful.
+- All three published account pages and account JavaScript returned HTTP 200 and matched the compiled release. Real browser checks passed for all three languages, including exact CORS and disabled email-dependent forms.
+- The live checker displayed the HTTP warning. Exercising the checker, planner, quiz and assistant produced no network requests containing tool input.
+- Gitleaks scanned the new source change and published Pages change: no findings. This is a bounded secret scan, not a guarantee that every future change is safe.
 
 ## Required private configuration
 
