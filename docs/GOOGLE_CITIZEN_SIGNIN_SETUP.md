@@ -5,7 +5,7 @@ This change stages an opt-in **Sign in with Google** flow for CYBER SURAKSHA 2.0
 ## Deployment status
 
 - This feature branch contains source code only. The main site and Neon Function are unchanged.
-- No Google OAuth client ID has been configured; no live Google sign-in has been demonstrated.
+- Google OAuth web client ID has been configured as a **public build-time value on this feature branch only**. No live Google sign-in has been demonstrated.
 - `GOOGLE_SIGNIN_ENABLED=0` and `GOOGLE_REGISTRATION_ENABLED=0` are safe defaults.
 - Existing email/password + OTP and administrator MFA behavior is unchanged.
 - Never enable Google identity for administrators. The Google route creates/accepts **citizen** roles only.
@@ -17,7 +17,7 @@ This change stages an opt-in **Sign in with Google** flow for CYBER SURAKSHA 2.0
 2. Set the **Authorized JavaScript origin** to `https://rk-hud.github.io`. Do **not** include `/cyber-suraksha-2.0/en/` because origins cannot contain paths. For the Google Identity Services popup callback approach used here, no custom redirect URI is used by the frontend.
 3. On a **separate Neon staging branch**, apply `services/account-api/sql/002-google-citizen-auth.sql`. Existing `portal_*` tables and existing MFA encrypted secrets remain as-is. Verify the new tables exist and check the target database/branch before applying anything.
 4. Put the Google **web client ID** (not a client secret) in the private Neon Function setting `GOOGLE_CLIENT_ID`, initially with both new feature flags disabled. Ensure `API_SESSION_KEY` and `API_OTP_KEY` still exist. Keep the exact existing `TOTP_ENCRYPTION_KEY` for the owner account; do not recreate an unrelated key.
-5. Set `web/pages/source/site.json`'s `google_client_id` to that same **public client ID** on a staging Pages build. Only the non-secret client ID may appear in static HTML. The builder permits the Google script/frame CSP only on account pages when the ID is present.
+5. The Google web client ID has been entered in `web/pages/source/site.json` **on this feature branch** (not deployed to live Pages). Verify it matches the Neon Function's `GOOGLE_CLIENT_ID` before any staging deployment. Only the non-secret client ID may appear in static HTML. The builder permits the Google script/frame CSP only on account pages when the ID is present.
 6. Deploy a reviewed staging API revision with the new Google module, first with `GOOGLE_SIGNIN_ENABLED=1`, `GOOGLE_REGISTRATION_ENABLED=0`. Check the API health capability and confirm unknown Google accounts are rejected without creating a user.
 7. For consented fictional test accounts, enable `GOOGLE_REGISTRATION_ENABLED=1` **only in staging**. Test Google popup, nonce binding, expired token, wrong audience, signature tampering, failed origin, reused token, blocked existing-email collision, owner-email rejection, and proper citizen-only session issuance.
 8. Verify a new Google citizen can read only their own fictional cases, and cannot read the admin endpoints or an existing password-account user's cases. Verify logout and session expiration. Run administrator TOTP regression tests independently. Use the existing owner admin sign-in, not Google, for owner privileges.
