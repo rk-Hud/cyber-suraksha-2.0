@@ -2,7 +2,6 @@
   "project": "CYBER SURAKSHA 2.0",
   "date": "2026-11-18",
   "source_baseline": "a60152fd2c7ae26602d6915a2817039b025fedfa",
-  "production_changes_applied": false,
   "genuine_google_account_login_verified": false,
   "backend": {
     "command": "npm test (private disposable loopback PostgreSQL configuration; REQUIRE_DB_TESTS=1)",
@@ -61,13 +60,45 @@
     "expires_at": "2026-11-25T05:16:34Z"
   },
   "staging_function": {
-    "status": "not deployed; credential remediation approval pending",
-    "url": null
+    "status": "PASS",
+    "slug": "csgooglestage",
+    "deployment": 3,
+    "url": "https://br-sweet-band-azhwai4r-csgooglestage.compute.c-3.ap-southeast-1.aws.neon.tech/",
+    "google_signin": true,
+    "google_registration": "restricted to one privately configured approved citizen tester",
+    "normal_email_otp_registration": false,
+    "deployed_invalid_signature_rejection_status": 401
   },
   "release_blockers": [
-    "Staging database credential reset approval and verification",
-    "Private remediation of reported exposed credentials",
-    "Approved non-owner Google test account and genuine login acceptance",
-    "Separate production migration, backup and deployment approval"
-  ]
+    "Genuine approved citizen Google account login and private case acceptance",
+    "Separate production credential rotation and recovery preparation approval",
+    "Confirmation of reported compromised provider-secret remediation",
+    "Separate production Google migration/deployment/activation approval"
+  ],
+  "production_api_changed": false,
+  "production_credentials_changed": false,
+  "existing_public_pages_changed": false,
+  "staging_test_path_published": true,
+  "staging_password_rotation": {
+    "status": "PASS",
+    "branch_id": "br-sweet-band-azhwai4r",
+    "role": "cs_owner_pilot",
+    "completed_at": "2026-11-18T13:39:11Z",
+    "fresh_managed_database_query": "PASS",
+    "secret_values_displayed": false
+  },
+  "staging_interface": {
+    "url": "https://rk-hud.github.io/cyber-suraksha-2.0/google-test/en/account.html",
+    "pages_commit": "71d1a00",
+    "languages": [
+      "en",
+      "hi",
+      "te"
+    ],
+    "actual_published_browser_checks": "PASS",
+    "real_provider_popup_open": "PASS",
+    "genuine_google_account_acceptance": "BLOCKED awaiting user-mediated approved-account login",
+    "existing_production_files_unchanged": 19,
+    "robots": "noindex,nofollow"
+  }
 }
