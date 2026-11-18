@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer"><title>Citizen services — CYBER SURAKSHA 2.0</title>
+<style>
+:root{font:16px/1.5 system-ui,sans-serif;color:#19333b;background:#f5f8fa}
+*{box-sizing:border-box}body{max-width:980px;margin:0 auto;padding:24px}header{border-bottom:2px solid #cbdadd;padding-bottom:16px}
+main{display:grid;gap:16px;margin-top:24px}.panel{padding:20px;background:white;border:1px solid #cbdadd;border-radius:12px}
+h1{font-size:1.8rem}h2{font-size:1.25rem}label{display:block;margin:12px 0 4px}
+input,select,textarea,button{font:inherit;padding:9px;max-width:100%}
+input,select,textarea{width:100%;border:1px solid #6c878e;border-radius:6px}button{margin:8px 6px 4px 0;background:#10282e;color:white;border:0;border-radius:6px;cursor:pointer}
+button:disabled{opacity:.55;cursor:not-allowed}.muted{color:#3f565e}.error{color:#9e1717}.success{color:#125c29}
+[hidden]{display:none!important}table{border-collapse:collapse;width:100%}th,td{border:1px solid #a5bdc2;padding:8px;text-align:left}
+</style></head><body>
+<header><a href="/cyber-suraksha-2.0/en/">← CYBER SURAKSHA 2.0</a><h1>Citizen support-case services</h1>
+<p>Independent platform — not a police or government reporting portal. For actual cybercrime reporting in India, use
+<a href="https://cybercrime.gov.in/" rel="noopener noreferrer">cybercrime.gov.in</a>; for urgent financial fraud call <a href="tel:1930">1930</a>.</p>
+</header>
+<main>
+<section class="panel" id="config-panel"><h2>Service status</h2><p id="status" role="status" aria-live="polite">Checking secure services…</p></section>
+<section class="panel" id="authentication"><h2>Account access</h2>
+<form id="login-form"><label for="email">Email address</label><input id="email" name="email" type="email" autocomplete="email" required maxlength="254">
+<label for="password">Password</label><input id="password" name="password" type="password" autocomplete="current-password" required minlength="12">
+<label for="display-name">Name (registration only)</label><input id="display-name" name="name" autocomplete="name" maxlength="80">
+<button type="submit">Sign in</button><button type="button" id="register">Create account</button>
+<button type="button" id="sign-out">Sign out</button></form>
+<p id="auth-message" role="status" aria-live="polite"></p></section>
+<section class="panel"><h2>Email verification</h2><p class="muted">A code is delivered only after Managed Auth email-OTP is enabled on the chosen Neon branch. Never disclose an OTP to other people.</p>
+<label for="otp">Verification code</label><input id="otp" inputmode="numeric" autocomplete="one-time-code" maxlength="12">
+<button id="send-otp" type="button">Send email code</button><button id="verify-otp" type="button">Verify email code</button>
+<p id="otp-message" role="status" aria-live="polite"></p></section>
+<section class="panel" id="case-panel" hidden><h2>Private support-case request</h2>
+<p class="muted">Only fictional test cases are allowed until independent security and privacy review has passed. Do not submit financial credentials, OTPs, passwords, contact details or real victim records.</p>
+<form id="case-form"><label for="category">Category</label>
+<select id="category"><option value="phishing">Phishing</option><option value="payment-fraud">Payment fraud</option><option value="account-takeover">Account takeover</option><option value="impersonation">Impersonation</option><option value="other">Other</option></select>
+<label for="description">Synthetic description (20–3,000 characters)</label><textarea id="description" minlength="20" maxlength="3000" rows="5" required></textarea>
+<button type="submit">Submit test case</button></form><p id="case-message" role="status" aria-live="polite"></p>
+<h3>My case tracking</h3><button id="refresh-cases" type="button">Refresh my cases</button><div id="case-list"></div></section>
+<section class="panel" id="admin-panel" hidden><h2>Administrator case queue</h2><p>Only identities on the server-managed admin allowlist can read this queue. Production requires an additional verified MFA control.</p>
+<button id="refresh-admin" type="button">Refresh admin queue</button><div id="admin-list"></div></section>
+</main>
+<script type="module" src="/src/main.js"></script>
+</body></html>
