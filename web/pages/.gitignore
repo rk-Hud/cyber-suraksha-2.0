@@ -6,3 +6,4 @@ browser-artifacts/
 .env
 .env.*
 !.env.example
+build/

@@ -18,6 +18,8 @@ export function configuration(env = process.env) {
   const publicUrl = new URL(env.PUBLIC_WEB_URL || 'https://rk-hud.github.io/cyber-suraksha-2.0/');
   if (publicUrl.protocol !== 'https:' && env.NODE_ENV !== 'test' || publicUrl.username || publicUrl.password || publicUrl.search || publicUrl.hash) throw new Error('Invalid public website URL');
   const mailConfigured = Boolean(from && (provider === 'resend' && env.RESEND_API_KEY || provider === 'smtp' && env.SMTP_HOST && env.SMTP_USERNAME && env.SMTP_PASSWORD));
+  const googleAllowedEmails = [...new Set((env.GOOGLE_ALLOWED_EMAILS || '').split(',').map(value => value.trim()).filter(Boolean).map(normalizeEmail))];
+  if (googleAllowedEmails.length > 100) throw new Error('Invalid Google test account allowlist');
   return {
     nodeEnv: env.NODE_ENV || 'production', databaseUrl: env.DATABASE_URL || '', origins,
     sessionKey, otpKey, authReady: sessionKey.length >= 32 && otpKey.length >= 32 && sessionKey !== otpKey,
@@ -26,6 +28,7 @@ export function configuration(env = process.env) {
     googleClientId: /^[0-9]+-[A-Za-z0-9_-]+\.apps\.googleusercontent\.com$/.test(env.GOOGLE_CLIENT_ID || '') ? env.GOOGLE_CLIENT_ID : '',
     googleSignIn: env.GOOGLE_SIGNIN_ENABLED === '1' && /^[0-9]+-[A-Za-z0-9_-]+\.apps\.googleusercontent\.com$/.test(env.GOOGLE_CLIENT_ID || ''),
     googleRegistration: env.GOOGLE_REGISTRATION_ENABLED === '1',
+    googleAllowedEmails,
     mailReady: env.EMAIL_READY === '1' && mailConfigured,
     mail: { provider, from, resendKey: env.RESEND_API_KEY || '', smtpHost: env.SMTP_HOST || '', smtpPort,
       smtpUser: env.SMTP_USERNAME || '', smtpPassword: env.SMTP_PASSWORD || '', smtpSecurity },

@@ -13,7 +13,10 @@ Citizen privacy: Scam Checker and Action Planner run on the user's device.
 Pasted tool text is never transmitted to or stored by this site's backend.
 Hosting serves website pages and static assets; those requests contain no tool input.
 Accounts: The static account interface connects only to the configured private-records API.
-Readiness checks keep registration and email sign-in closed until real mail delivery is available.
+Readiness checks keep email/password registration and email-code sign-in closed until real mail delivery is available.
 Account names, email addresses and submitted complaints are stored by the account service.
 Owner administration requires email verification and a recent authenticator code.
 Official resources: Reference links only; their respective owners remain responsible for their content.
+Optional Google identity: Citizen sign-in uses verified Google assertions and an API-issued one-time nonce; no Google password is received.
+Administrator boundary: Citizen Google sign-in never grants owner rights or bypasses authenticator verification.
+Public policies: Localized privacy.html and terms.html describe accounts, provider processing and service limits.

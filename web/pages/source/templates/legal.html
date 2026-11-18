@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block content %}
+<article class="shell section reading-page" aria-labelledby="legal-title">
+  <div class="section-heading"><p class="eyebrow">CYBER SURAKSHA 2.0</p><h1 id="legal-title">{{ t('privacy_policy' if legal_kind == 'privacy' else 'service_terms') }}</h1><p>{{ t('legal_scope') }}</p></div>
+  {% if legal_kind == 'privacy' %}
+  {% for section in ['local','account','google','providers','retention','requests'] %}
+  <section><h2>{{ t('policy_' ~ section ~ '_title') }}</h2><p>{{ t('policy_' ~ section ~ '_body') }}</p></section>
+  {% endfor %}
+  {% else %}
+  {% for section in ['independent','appropriate','access','limits'] %}
+  <section><h2>{{ t('terms_' ~ section ~ '_title') }}</h2><p>{{ t('terms_' ~ section ~ '_body') }}</p></section>
+  {% endfor %}
+  {% endif %}
+  <p><a href="{{ base_path }}/{{ lang }}/account.html">{{ t('nav_citizen') }} →</a></p>
+</article>
+{% endblock %}

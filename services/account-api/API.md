@@ -32,6 +32,10 @@ production `.env`, database connection string, key, OTP or authenticator seed.
 | `EMAIL_READY` | Set to `1` only after real delivery is verified |
 | `REGISTRATION_ENABLED` | Set to `1` only after delivery and access-control checks |
 | `NODE_ENV` | `production` |
+| `GOOGLE_CLIENT_ID` | Public Google OAuth Web client ID, matching the frontend |
+| `GOOGLE_SIGNIN_ENABLED` | Explicit opt-in for the separate citizen Google route |
+| `GOOGLE_REGISTRATION_ENABLED` | Permit new Google citizens only after staging verification |
+| `GOOGLE_ALLOWED_EMAILS` | Optional private comma-separated exact-address allowlist for approved staging testers |
 
 Resend public delivery requires a sender domain whose DNS the owner controls.
 A GitHub Pages project URL is not such a domain. Shared provider test senders
@@ -56,7 +60,9 @@ Errors never contain raw database/provider messages or submitted private text.
 
 | Method and route | Input / behavior |
 | --- | --- |
-| `GET /health` | Database and feature readiness; no secrets |
+| `GET /health` | Database and feature readiness; public Google Client ID only when enabled and migrated |
+| `POST /auth/google/challenge` | `locale`; starts a server-bound five-minute Google nonce/flow |
+| `POST /auth/google` | `credential,nonce,challengeId,flowToken,locale,consent`; citizen-only Google exchange |
 | `GET /public/content` | Public multilingual content overrides |
 | `POST /auth/register` | `name,email,password,confirmPassword,consent:true,locale` |
 | `POST /auth/login` | `email,password,locale` |
@@ -121,7 +127,7 @@ authenticated case list, without embedding session tokens or case content.
 ## Database and release procedure
 
 `sql/001-existing-portal.sql` is additive and compatible with the existing ten
-`portal_*` tables. `npm run db:init` checks missing tables/indexes and seeds only
+`portal_*` tables. `sql/002-google-citizen-auth.sql` adds the two Google identity/replay tables without changing users or MFA. `npm run db:init` checks missing tables/indexes and seeds only
 missing public content. It creates no default administrator password and does
 not overwrite users, cases or authenticator factors. Run it against a disposable
 branch before production. Keep the production branch intact during migration.
@@ -143,3 +149,64 @@ testing exact-origin CORS and unauthorized requests. Keep the previous services
 until real OTP delivery, legacy owner MFA, private case isolation and case
 updates have passed on the replacement. A successful health response alone is
 not an end-to-end activation test.
+
+## Google citizen authentication
+
+Google Identity Services uses the public Web Client ID, without a Client Secret.
+The frontend requests `/auth/google/challenge` before initializing GIS, then uses
+that server-generated nonce in Google's signed credential. The response contains
+`challenge: {id, token, nonce, purpose: "google", expiresAt}`. The 43-character
+flow token and nonce stay in the current page's memory. The callback supplies
+`challengeId`, `flowToken`, `nonce` and `credential`, plus explicit consent for a
+new account. The server accepts only its own unexpired pending challenge and
+consumes it transactionally with the identity binding, replay fingerprint and
+new application session. The application bearer is newly generated and expires
+in 30 minutes; neither a Google ID token nor a pending flow token is a case API
+session. Existing password/OTP session lifetimes are unchanged.
+
+The verifier permits RS256 against a bounded HTTPS fetch of Google's fixed JWK
+endpoint. Canonical base64url prevents alternate signature encodings from
+bypassing fingerprint checks. It checks Google issuer, exact audience and `azp`
+when present, finite integer timestamps, at-most-one-hour token lifetime, signed
+nonce, verified email and stable Google subject. JWK refresh is throttled,
+shared across concurrent requests and isolated per verifier. Injected key
+fetchers exist only as an explicit test dependency and are rejected by a
+production API configuration; tests still verify actual RSA signatures.
+
+A nonempty `GOOGLE_ALLOWED_EMAILS` setting restricts Google exchanges to those normalized exact verified email addresses, in addition to all identity checks. Keep this private and use it for staging. An empty setting adds no server-side tester allowlist; do not infer Google Cloud audience restrictions from this flag. The owner denial applies even when the owner address appears on the list.
+
+Only `sub` links an existing Google citizen. A matching password-account email
+returns a conflict and never changes that account. The configured owner email
+and all non-citizen bound roles are rejected by the Google route. No role is
+accepted from a browser, and no owner MFA flag is set by Google authentication.
+Google-only accounts cannot sign in with a password or acquire one through
+email recovery. Recovery challenges remain generic; reset and pending password
+OTP completion recheck the binding before issuing credentials. Recovery for a
+Google-only identity must remain with Google. These guards also apply when the
+Google feature flag is disabled. Once any Google identity exists, rollback must
+retain this guarded bundle and identity tables; reverting to a pre-Google
+password-recovery implementation could re-open this account-takeover path. A third-party address in a Google
+profile is not a fresh proof of mailbox control for unrelated email delivery.
+
+The Google health flags require both additive tables to be queryable. The
+public `googleClientId` lets the interface reject a mismatched audience before
+rendering the button. Feature flags never bypass cryptographic verification.
+
+Maintenance is bounded and activity-driven: each new Google challenge removes
+at most 100 Google anonymous flows expired for over one hour and at most 100
+accepted-credential fingerprints older than two hours. Such credentials cannot
+remain valid under the enforced token lifetime. No periodic worker is claimed.
+Password flows, users, cases and enrolled MFA are untouched by this cleanup.
+`LOGIN_RETENTION_DAYS` is a configuration value, not evidence of automatic login
+record deletion; no login-history deletion worker is configured here.
+
+Google authentication rejections emit only a random request reference and a
+stable error category. Successful logins use the existing protected login
+audit table. Raw ID tokens, OAuth secrets, nonce values and private identity
+claims are never included in application error messages or logs.
+
+Run `PORTAL_TEST_CONFIG=/private/local-pg.json REQUIRE_DB_TESTS=1 npm test`
+against a disposable loopback database. Google unit and HTTP tests use ephemeral
+RSA keys and injected Google-key responses; passing them is not evidence that
+an approved human account completed Google's live popup. Record that live
+acceptance separately before production release.

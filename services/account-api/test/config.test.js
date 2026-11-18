@@ -23,3 +23,9 @@ test('independent signing keys and actual mail credentials are required for read
   assert.equal(configuration(env).mailReady, false);
   assert.throws(() => configuration({ ...env, MAIL_FROM: 'sender@example.test\r\nBcc:other@example.test' }));
 });
+
+test('a Google test allowlist normalizes exact addresses without publishing them', () => {
+  const config = configuration({ ADMIN_EMAIL: 'owner@example.test', GOOGLE_ALLOWED_EMAILS: 'Citizen@Example.test, citizen@example.test' });
+  assert.deepEqual(config.googleAllowedEmails, ['citizen@example.test']);
+  assert.throws(()=>configuration({ ADMIN_EMAIL: 'owner@example.test', GOOGLE_ALLOWED_EMAILS: 'not-an-address' }));
+});

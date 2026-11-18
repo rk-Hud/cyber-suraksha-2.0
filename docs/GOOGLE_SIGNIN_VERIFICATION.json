@@ -1,0 +1,104 @@
+{
+  "project": "CYBER SURAKSHA 2.0",
+  "date": "2026-11-18",
+  "source_baseline": "a60152fd2c7ae26602d6915a2817039b025fedfa",
+  "genuine_google_account_login_verified": false,
+  "backend": {
+    "command": "npm test (private disposable loopback PostgreSQL configuration; REQUIRE_DB_TESTS=1)",
+    "passed": 103,
+    "failed": 0,
+    "skipped": 0,
+    "syntax_and_bundle": "passed",
+    "bundle_sha256": "459cb5998ffc643d053a81252819c617c96e9025e5db9d14793a54cb937676a9"
+  },
+  "administrator_mfa_regression": {
+    "passed": 9,
+    "failed": 0,
+    "skipped": 0,
+    "included_in_full_backend_suite": true
+  },
+  "frontend": {
+    "command": "npm test",
+    "passed": 83,
+    "failed": 0,
+    "skipped": 0
+  },
+  "static_build": {
+    "command": "python -m unittest discover -s tests -p test_*.py -v",
+    "passed": 7,
+    "failed": 0,
+    "localized_pages": 13,
+    "matching_labels": 455
+  },
+  "real_google_widget": {
+    "provider_script_and_frame": "passed",
+    "languages": [
+      "en",
+      "hi",
+      "te"
+    ],
+    "widths": [
+      390,
+      1440
+    ],
+    "csp_violations": 0,
+    "api_challenge": "synthetic fixture",
+    "account_login_performed": false
+  },
+  "google_key_connectivity": {
+    "trusted_https_jwks_status": 200,
+    "invalid_signature_rejected": true,
+    "genuine_credential_used": false
+  },
+  "staging_database": {
+    "branch_id": "br-sweet-band-azhwai4r",
+    "schema_only": true,
+    "google_tables_and_constraints": "verified; not reapplied",
+    "users_at_initial_audit": 0,
+    "complaints_at_initial_audit": 0,
+    "google_identities_at_initial_audit": 0,
+    "expires_at": "2026-11-25T05:16:34Z"
+  },
+  "staging_function": {
+    "status": "PASS",
+    "slug": "csgooglestage",
+    "deployment": 3,
+    "url": "https://br-sweet-band-azhwai4r-csgooglestage.compute.c-3.ap-southeast-1.aws.neon.tech/",
+    "google_signin": true,
+    "google_registration": "restricted to one privately configured approved citizen tester",
+    "normal_email_otp_registration": false,
+    "deployed_invalid_signature_rejection_status": 401
+  },
+  "release_blockers": [
+    "Genuine approved citizen Google account login and private case acceptance",
+    "Separate production credential rotation and recovery preparation approval",
+    "Confirmation of reported compromised provider-secret remediation",
+    "Separate production Google migration/deployment/activation approval"
+  ],
+  "production_api_changed": false,
+  "production_credentials_changed": false,
+  "existing_public_pages_changed": false,
+  "staging_test_path_published": true,
+  "staging_password_rotation": {
+    "status": "PASS",
+    "branch_id": "br-sweet-band-azhwai4r",
+    "role": "cs_owner_pilot",
+    "completed_at": "2026-11-18T13:39:11Z",
+    "fresh_managed_database_query": "PASS",
+    "secret_values_displayed": false
+  },
+  "staging_interface": {
+    "url": "https://rk-hud.github.io/cyber-suraksha-2.0/google-test/en/account.html",
+    "pages_commit": "71d1a00",
+    "languages": [
+      "en",
+      "hi",
+      "te"
+    ],
+    "actual_published_browser_checks": "PASS",
+    "real_provider_popup_open": "PASS",
+    "genuine_google_account_acceptance": "BLOCKED awaiting user-mediated approved-account login",
+    "existing_production_files_unchanged": 19,
+    "robots": "noindex,nofollow"
+  }
+}

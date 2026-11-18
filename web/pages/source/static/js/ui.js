@@ -28,7 +28,8 @@
     if (['en', 'hi', 'te'].includes(lang)) {
       // A fixed path keeps pasted text and incident details out of the URL.
       const basePath = document.documentElement.dataset?.basePath || "";
-      const account = document.documentElement.dataset?.accountPage === "true" ? "account.html" : "";
+      const configuredPage = document.documentElement.dataset?.pageFilename;
+      const account = ["account.html", "privacy.html", "terms.html"].includes(configuredPage) ? configuredPage : document.documentElement.dataset?.accountPage === "true" ? "account.html" : "";
       window.location.assign(`${basePath}/${lang}/${account}`);
     }
   });

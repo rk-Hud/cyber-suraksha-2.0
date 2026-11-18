@@ -74,3 +74,18 @@ test('challenge data is bounded and retained only for a current API flow', () =>
   assert.equal(validChallenge(input).token, token);
   for (const change of [{ token: 'short' }, { id: '<script>' }, { expiresAt: Date.now() - 1 }]) assert.throws(() => validChallenge({ ...input, ...change }));
 });
+
+test('an old unauthenticated response cannot revoke or replace a newer bearer session', async () => {
+  for (const oldResponse of [() => new Response(JSON.stringify({ error: { code: 'msg_invalid_credentials' } }), { status: 401 }), () => new Response('invalid json', { status: 401 })]) {
+    let release, latest;
+    const client = createClient(API, (url, options) => {
+      if (url.endsWith('/auth/login')) return new Promise(resolve => { release = resolve; });
+      latest = options.headers.Authorization; return response({});
+    });
+    const pending = client.request('/api/v1/auth/login', 'POST', { email: 'fictional@example.test' });
+    client.setSession(session()); release(oldResponse());
+    await assert.rejects(pending, { code: 'account_request_cancelled' });
+    await client.request('/api/v1/cases', 'GET', undefined, { authenticated: true });
+    assert.equal(latest, 'Bearer ' + token);
+  }
+});

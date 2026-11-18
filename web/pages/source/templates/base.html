@@ -1,27 +1,27 @@
 <!doctype html>
-<html lang="{{ lang }}" data-base-path="{{ base_path }}" data-api-url="{{ api_url }}" data-google-client-id="{{ google_client_id if is_account else '' }}" data-account-page="{{ 'true' if is_account else 'false' }}">
+<html lang="{{ lang }}" data-base-path="{{ base_path }}" data-api-url="{{ api_url }}" data-google-client-id="{{ google_client_id if is_account else '' }}" data-account-page="{{ 'true' if is_account else 'false' }}" data-page-filename="{{ page_filename }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
   <meta name="theme-color" content="#10282e">
   <meta name="description" content="{{ t('meta_description') }}">
-  <link rel="canonical" href="{{ site_origin }}{{ base_path }}/{{ lang }}/{{ 'account.html' if is_account else '' }}">
-  {% if is_account %}<meta name="robots" content="noindex,nofollow">{% endif %}
+  <link rel="canonical" href="{{ site_origin }}{{ base_path }}/{{ lang }}/{{ page_filename }}">
+  {% if is_account or test_workspace %}<meta name="robots" content="noindex,nofollow">{% endif %}
   <meta property="og:title" content="{{ t('page_title') }}">
   <meta property="og:description" content="{{ t('meta_description') }}">
   <meta property="og:type" content="website">
   <meta property="og:url" content="{{ site_origin }}{{ base_path }}/{{ lang }}/">
   <meta name="author" content="Jatoth Ramakrishna">
   <meta name="copyright" content="{{ year }} Jatoth Ramakrishna. CYBER SURAKSHA 2.0 is independently architected, developed, authored and owned by Jatoth Ramakrishna for public cybersecurity awareness.">
-  <meta name="referrer" content="no-referrer">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' {% if is_account and google_client_id %}https://accounts.google.com{% endif %}; {% if is_account and google_client_id %}frame-src https://accounts.google.com;{% endif %} style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src {{ csp_connect }}; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="{{ 'strict-origin-when-cross-origin' if is_account and google_client_id else 'no-referrer' }}">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'{% if is_account and google_client_id %} https://accounts.google.com/gsi/client{% endif %}; {% if is_account and google_client_id %}frame-src https://accounts.google.com/gsi/;{% endif %} style-src 'self'{% if is_account and google_client_id %} https://accounts.google.com/gsi/style{% endif %};{% if is_account and google_client_id %} style-src-elem 'self' https://accounts.google.com/gsi/style 'sha256-RU4sU0AaS8IBGZx8XrGt/pa9A5SLA3dQszGeqT5L3Kw='; style-src-attr 'unsafe-inline';{% endif %} img-src 'self' data:; font-src 'self'; connect-src {{ csp_connect }}{% if is_account and google_client_id %} https://accounts.google.com/gsi/{% endif %}; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>{{ t('account_page_title') if is_account else t('page_title') }}</title>
   <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/cs-logo.svg') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/site.css') }}">
-  <link rel="alternate" hreflang="en" href="{{ base_path }}/en/{{ 'account.html' if is_account else '' }}">
-  <link rel="alternate" hreflang="hi" href="{{ base_path }}/hi/{{ 'account.html' if is_account else '' }}">
-  <link rel="alternate" hreflang="te" href="{{ base_path }}/te/{{ 'account.html' if is_account else '' }}">
+  <link rel="alternate" hreflang="en" href="{{ base_path }}/en/{{ page_filename }}">
+  <link rel="alternate" hreflang="hi" href="{{ base_path }}/hi/{{ page_filename }}">
+  <link rel="alternate" hreflang="te" href="{{ base_path }}/te/{{ page_filename }}">
   <script src="{{ url_for('static', filename='js/scam_checker.js') }}" defer></script>
   <script src="{{ url_for('static', filename='js/tools.js') }}" defer></script>
   <script src="{{ url_for('static', filename='js/ui.js') }}" defer></script>
@@ -30,6 +30,7 @@
   {% if is_account %}<script src="{{ url_for('static', filename='js/google_signin.js') }}" defer></script>{% endif %}
 </head>
 <body id="top">
+  {% if test_workspace %}<aside class="test-workspace-note" role="note"><div class="shell"><strong>{{ t('test_workspace_title') }}</strong><p>{{ t('test_workspace_body') }}</p></div></aside>{% endif %}
   <a class="skip-link" href="#main">{{ t('skip_content') }}</a>
   <div class="service-strip">
     <div class="shell service-strip-inner">
@@ -76,7 +77,7 @@
   <footer class="site-footer">
     <div class="shell footer-main">
       <div><strong class="footer-brand">CYBER SURAKSHA 2.0</strong><p>{{ t('footer_mission') }}</p></div>
-      <div class="footer-links"><a href="{{ base_path }}/{{ lang }}/#privacy">{{ t('nav_privacy') }}</a><a href="{{ base_path }}/SECURITY.md">{{ t('security_policy') }}</a><a href="{{ base_path }}/humans.txt">{{ t('humans_link') }}</a><a href="{{ base_path }}/{{ lang }}/account.html#admin">{{ t('admin_sign_in') }}</a><a href="#top">{{ t('back_top') }} ↑</a></div>
+      <div class="footer-links"><a href="{{ base_path }}/{{ lang }}/privacy.html">{{ t('privacy_policy') }}</a><a href="{{ base_path }}/{{ lang }}/terms.html">{{ t('service_terms') }}</a><a href="{{ base_path }}/SECURITY.md">{{ t('security_policy') }}</a><a href="{{ base_path }}/humans.txt">{{ t('humans_link') }}</a><a href="{{ base_path }}/{{ lang }}/account.html#admin">{{ t('admin_sign_in') }}</a><a href="#top">{{ t('back_top') }} ↑</a></div>
     </div>
     <div class="shell footer-legal">
       <p>© {{ year }} Jatoth Ramakrishna. {{ t('footer_rights') }} {{ t('footer_ownership') }}</p>

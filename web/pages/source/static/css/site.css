@@ -617,3 +617,15 @@ table { width: 100%; border-collapse: collapse; text-align: left; }
 .account-workspace .message-error { border-left-color: #9a4435; background: #fff0eb; }
 .account-workspace .workspace-stats { margin-top: 0; }
 @media(max-width:720px){.account-workspace .workspace-heading{display:block}.account-workspace .workspace-heading>.button{margin-top:14px}.account-workspace .workspace-nav{gap:12px 18px}.account-workspace .auth-panel{margin-top:28px}}
+
+/* Reading policies stay narrow enough for comfortable line lengths. */
+.reading-page { max-width: 850px; }
+.reading-page section { border-top: 1px solid var(--line, #d4dfe0); padding-top: 1.6rem; margin-top: 2rem; }
+.reading-page h2 { font-size: 1.25rem; }
+#google-citizen-signin { border-top: 1px solid var(--line, #d4dfe0); padding-top: 1.5rem; margin-top: 1.5rem; }
+#google-citizen-signin[hidden] { display: none; }
+#google-signin-button { min-height: 0; margin-top: 1rem; max-width: 100%; }
+#google-signin-status { font-size: .9rem; }
+
+.test-workspace-note { background: #fff4db; border-bottom: 1px solid #a77626; color: #513b18; padding: .85rem 0; }
+.test-workspace-note p { margin: .3rem 0 0; font-size: .9rem; }
