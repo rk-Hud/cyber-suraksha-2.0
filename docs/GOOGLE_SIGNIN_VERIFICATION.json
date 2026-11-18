@@ -1,0 +1,73 @@
+{
+  "project": "CYBER SURAKSHA 2.0",
+  "date": "2026-11-18",
+  "source_baseline": "a60152fd2c7ae26602d6915a2817039b025fedfa",
+  "production_changes_applied": false,
+  "genuine_google_account_login_verified": false,
+  "backend": {
+    "command": "npm test (private disposable loopback PostgreSQL configuration; REQUIRE_DB_TESTS=1)",
+    "passed": 103,
+    "failed": 0,
+    "skipped": 0,
+    "syntax_and_bundle": "passed",
+    "bundle_sha256": "459cb5998ffc643d053a81252819c617c96e9025e5db9d14793a54cb937676a9"
+  },
+  "administrator_mfa_regression": {
+    "passed": 9,
+    "failed": 0,
+    "skipped": 0,
+    "included_in_full_backend_suite": true
+  },
+  "frontend": {
+    "command": "npm test",
+    "passed": 83,
+    "failed": 0,
+    "skipped": 0
+  },
+  "static_build": {
+    "command": "python -m unittest discover -s tests -p test_*.py -v",
+    "passed": 7,
+    "failed": 0,
+    "localized_pages": 13,
+    "matching_labels": 455
+  },
+  "real_google_widget": {
+    "provider_script_and_frame": "passed",
+    "languages": [
+      "en",
+      "hi",
+      "te"
+    ],
+    "widths": [
+      390,
+      1440
+    ],
+    "csp_violations": 0,
+    "api_challenge": "synthetic fixture",
+    "account_login_performed": false
+  },
+  "google_key_connectivity": {
+    "trusted_https_jwks_status": 200,
+    "invalid_signature_rejected": true,
+    "genuine_credential_used": false
+  },
+  "staging_database": {
+    "branch_id": "br-sweet-band-azhwai4r",
+    "schema_only": true,
+    "google_tables_and_constraints": "verified; not reapplied",
+    "users_at_initial_audit": 0,
+    "complaints_at_initial_audit": 0,
+    "google_identities_at_initial_audit": 0,
+    "expires_at": "2026-11-25T05:16:34Z"
+  },
+  "staging_function": {
+    "status": "not deployed; credential remediation approval pending",
+    "url": null
+  },
+  "release_blockers": [
+    "Staging database credential reset approval and verification",
+    "Private remediation of reported exposed credentials",
+    "Approved non-owner Google test account and genuine login acceptance",
+    "Separate production migration, backup and deployment approval"
+  ]
+}

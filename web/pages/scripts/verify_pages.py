@@ -2,12 +2,17 @@
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import urlsplit
+import argparse
 import json
 import re
 
 ROOT = Path(__file__).resolve().parents[1]
-SITE = ROOT / 'docs'
-CONFIG = json.loads((ROOT / 'source/site.json').read_text())
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--site', type=Path, default=ROOT / 'docs')
+parser.add_argument('--config', type=Path, default=ROOT / 'source/site.json')
+args = parser.parse_args()
+SITE = args.site.resolve()
+CONFIG = json.loads(args.config.read_text())
 BASE = CONFIG['base_path']
 ORIGIN = CONFIG['origin']
 LOCAL_TOOLS = ('scam_checker.js', 'tools.js', 'ui.js')
@@ -62,17 +67,17 @@ def resolve(path):
 
 
 pages = {p: parse(p) for p in SITE.rglob('*.html')}
-assert len(pages) == 7
+assert len(pages) == 13
 for p, document in pages.items():
     relative = p.relative_to(SITE).as_posix()
     lang = 'en' if relative == 'index.html' else relative[:2]
     account = p.name == 'account.html'
     assert document.base == BASE
     assert document.api_url == CONFIG.get('api_url', '').rstrip('/')
-    assert document.canonical == f'{ORIGIN}{BASE}/{lang}/' + ('account.html' if account else '')
+    assert document.canonical == f'{ORIGIN}{BASE}/{lang}/' + ('' if p.name == 'index.html' else p.name)
     if account:
         assert document.forms and all(action == '#' for action in document.forms)
-    else:
+    elif p.name not in ('privacy.html', 'terms.html'):
         assert len(document.forms) == 4
         assert all(action.startswith(f'{BASE}/{lang}/#') for action in document.forms)
     assert "form-action 'none'" in document.csp
@@ -81,6 +86,17 @@ for p, document in pages.items():
     if document.api_url:
         u = urlsplit(document.api_url)
         expected += ' ' + u.scheme + '://' + u.netloc
+    if account and CONFIG.get('google_client_id'):
+        expected += ' https://accounts.google.com/gsi/'
+        assert 'script-src \'self\' https://accounts.google.com/gsi/client;' in document.csp
+        assert 'style-src \'self\' https://accounts.google.com/gsi/style;' in document.csp
+        assert 'frame-src https://accounts.google.com/gsi/;' in document.csp
+        assert "style-src-attr 'unsafe-inline';" in document.csp
+        assert "script-src 'self' https://accounts.google.com/gsi/client;" in document.csp
+        assert 'unsafe-eval' not in document.csp
+        assert 'style-src-elem' in document.csp
+    else:
+        assert 'accounts.google.com' not in document.csp
     assert connect == expected and '*' not in connect
     for path in document.paths:
         if path.startswith('#'):

@@ -40,7 +40,7 @@
   </section>
 
   <section data-account-panel="forgot" class="auth-layout" hidden>
-    <div class="auth-intro"><h2>{{ t('forgot_title') }}</h2><p>{{ t('forgot_intro') }}</p></div>
+    <div class="auth-intro"><h2>{{ t('forgot_title') }}</h2><p>{{ t('forgot_intro') }}</p><p class="field-hint">{{ t('google_recovery_hint') }}</p></div>
     <div class="surface auth-panel"><form id="account-forgot" class="stack-form" method="post" action="#" data-email-required>
       <label class="field-label" for="forgot-email">{{ t('email') }}</label><input id="forgot-email" name="email" type="email" autocomplete="username" maxlength="254" required>
       <button class="button button-dark" type="submit">{{ t('forgot_submit') }}</button>

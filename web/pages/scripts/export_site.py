@@ -1,6 +1,6 @@
 """Build the static multilingual UI; account requests go only to the configured API."""
 from __future__ import annotations
-import json,re,shutil
+import argparse,json,re,shutil,tempfile
 from datetime import datetime
 from html import escape
 from html.parser import HTMLParser
@@ -73,14 +73,14 @@ class DocumentAudit(HTMLParser):
   if (tag in ('script','img') or tag=='link' and a.get('rel') in ('stylesheet','icon')) and link.startswith(('https://','http://','//')):self.remote.append(link)
  def handle_data(self,data):self.visible.append(data)
 
-def validate_page(content,language,account=False):
+def validate_page(content,language,account=False,reading=False):
  a=DocumentAudit();a.feed(content)
  if a.lang!=language or len(a.ids)!=len(set(a.ids)) or a.remote:raise ValueError('Language, duplicate identifiers or remote asset failure')
- if not account:
+ if not account and not reading:
   if a.names:raise ValueError('Local citizen tools may not have submission names')
   if content.count('<tr data-group=')!=20 or a.disclosures!={'resources-details':False}:raise ValueError('Directory is incomplete or expanded')
   if 'id="checker-form"' not in content or 'id="citizen"' not in content:raise ValueError('Citizen tools missing')
- else:
+ elif account:
   if 'id="account-app"' not in content or 'id="account-register"' not in content or 'id="account-new-case"' not in content:raise ValueError('Account interface missing')
  if any(f'id="{removed}"' in content for removed in ('soc','glossary','operations')):raise ValueError('Removed section returned')
  if re.search(r'\b(demo|preview|staging)\b',' '.join(a.visible),re.I):raise ValueError('Release-state wording remains')
@@ -88,15 +88,24 @@ def validate_page(content,language,account=False):
  if 'form-action \'none\'' not in content:raise ValueError('Native form posts must fail closed')
  return a.paths
 
-def main():
+def main(argv=None):
+ global OUTPUT
+ parser=argparse.ArgumentParser(description=__doc__)
+ parser.add_argument('--config',type=Path,default=SOURCE/'site.json',help='Public build settings; never include secrets')
+ parser.add_argument('--output',type=Path,default=ROOT/'docs',help='Separate output directory for an isolated build')
+ args=parser.parse_args(argv)
+ OUTPUT=args.output.resolve()
+ if OUTPUT==ROOT or OUTPUT==SOURCE or OUTPUT in SOURCE.parents or OUTPUT.is_relative_to(SOURCE):raise ValueError('Output may not replace source files')
  dictionaries={lang:read_json(f'ui_{lang}.json') for lang in LANGUAGES}
  keys=set(dictionaries['en'])
  if any(set(d)!=keys or any(not isinstance(v,str) or not v.strip() for v in d.values()) for d in dictionaries.values()):raise ValueError('Translation parity or content failure')
- site=json.loads((SOURCE/'site.json').read_text());origin=site['origin'];base=site.get('base_path','')
+ site=json.loads(args.config.read_text());origin=site['origin'];base=site.get('base_path','')
  if not isinstance(base,str) or not re.fullmatch(r'(?:/[A-Za-z0-9][A-Za-z0-9._-]*)*',base):raise ValueError('Invalid base path')
  u=urlsplit(origin)
  if u.scheme!='https' or not u.hostname or u.path or u.query or u.fragment:raise ValueError('Invalid canonical origin')
  api_url,csp_connect=api_configuration(site.get('api_url',''))
+ test_workspace=site.get('test_workspace',False)
+ if not isinstance(test_workspace,bool):raise ValueError('test_workspace must be a boolean')
  google_client_id=site.get('google_client_id','')
  if not isinstance(google_client_id,str) or google_client_id and not re.fullmatch(r'[0-9]+-[A-Za-z0-9_-]+\.apps\.googleusercontent\.com',google_client_id):raise ValueError('Invalid Google OAuth web client ID')
  agencies=read_json('agencies.json');advisory=read_json('advisory.json')
@@ -104,11 +113,13 @@ def main():
  environment=Environment(loader=FileSystemLoader(SOURCE/'templates'),autoescape=select_autoescape(('html',)),undefined=StrictUndefined)
  environment.globals['url_for']=lambda endpoint,**args:base+asset_url(endpoint,**args)
  # Work from annotated template copies so source edits remain ordinary Jinja/HTML.
- template_dir=ROOT/'.build-templates';template_dir.mkdir(exist_ok=True)
+ template_dir=Path(tempfile.mkdtemp(prefix='cybersuraksha-templates-'))
  for p in (SOURCE/'templates').glob('*.html'):(template_dir/p.name).write_text(bind_copy(p.read_text()))
  environment.loader=FileSystemLoader(template_dir)
- if OUTPUT.exists():shutil.rmtree(OUTPUT)
- OUTPUT.mkdir();shutil.copytree(SOURCE/'static',OUTPUT/'static')
+ if OUTPUT.exists():
+  if not OUTPUT.is_dir() or any(OUTPUT.iterdir()) and not (OUTPUT/'.nojekyll').is_file():raise ValueError('Refusing to replace a non-build output directory')
+  shutil.rmtree(OUTPUT)
+ OUTPUT.mkdir(parents=True);shutil.copytree(SOURCE/'static',OUTPUT/'static')
  for name in ('humans.txt','SECURITY.md'):shutil.copyfile(SOURCE/name,OUTPUT/name)
  linked=[]
  for lang in LANGUAGES:
@@ -116,12 +127,14 @@ def main():
   data=json.dumps(copy,ensure_ascii=False,separators=(',',':')).replace('\u2028','\\u2028').replace('\u2029','\\u2029')
   (OUTPUT/'static/js'/f'account_copy_{lang}.js').write_text('window.CyberSurakshaAccountCopy=Object.freeze('+data+');\n')
   directory=OUTPUT/lang;directory.mkdir()
-  context=dict(site_origin=origin,base_path=base,api_url=api_url,csp_connect=csp_connect,google_client_id=google_client_id,lang=lang,t=lambda key,d=copy:d[key],year=datetime.now(ZoneInfo('Asia/Kolkata')).year,agencies=agencies,advisory=advisory)
-  for account,name in ((False,'index.html'),(True,'account.html')):
-   content=environment.get_template(name).render(**context,is_account=account)
-   linked+=validate_page(content,lang,account)
+  context=dict(test_workspace=test_workspace,site_origin=origin,base_path=base,api_url=api_url,csp_connect=csp_connect,google_client_id=google_client_id,lang=lang,t=lambda key,d=copy:d[key],year=datetime.now(ZoneInfo('Asia/Kolkata')).year,agencies=agencies,advisory=advisory)
+  for account,reading,name,template in ((False,False,'index.html','index.html'),(True,False,'account.html','account.html'),(False,True,'privacy.html','legal.html'),(False,True,'terms.html','legal.html')):
+   filename='' if name=='index.html' else name
+   content=environment.get_template(template).render(**context,is_account=account,page_filename=filename,legal_kind='privacy' if name=='privacy.html' else 'terms')
+   content='\n'.join(line.rstrip() for line in content.splitlines())+'\n'
+   linked+=validate_page(content,lang,account,reading)
    (directory/name).write_text(content)
-   if lang=='en' and not account:(OUTPUT/'index.html').write_text(content)
+   if lang=='en' and name=='index.html':(OUTPUT/'index.html').write_text(content)
  for link in linked:
   path=link.split('#',1)[0]
   if base and not(path==base or path.startswith(base+'/')):raise ValueError('Local link escapes project: '+path)
@@ -133,6 +146,6 @@ def main():
   text=(OUTPUT/'static/js'/name).read_text()
   if re.search(r'\b(?:fetch|XMLHttpRequest|WebSocket|EventSource|sendBeacon|localStorage|sessionStorage)\s*(?:\(|\.)',text):raise ValueError('Local-tool networking/storage: '+name)
  (OUTPUT/'.nojekyll').touch();shutil.rmtree(template_dir)
- print(f'Built 7 localized pages, {len(keys)} matching UI keys, private local tools and configured account API.')
+ print(f'Built 13 localized pages, {len(keys)} matching UI keys, private local tools and configured account API.')
 
 if __name__=='__main__':main()

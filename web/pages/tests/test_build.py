@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import re
 import unittest
+import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('export_site', ROOT / 'scripts/export_site.py')
@@ -42,6 +43,58 @@ class StaticBuild(unittest.TestCase):
         self.assertIn('data-copy-key="name"', result)
         self.assertIn('data-copy-placeholder="name"', result)
         self.assertNotIn('<textarea><span', result)
+
+    def test_isolated_preview_does_not_change_production_configuration(self):
+        original = (ROOT / 'source/site.json').read_bytes()
+        settings = json.loads(original)
+        settings.update(base_path='/cyber-suraksha-2.0/google-test', api_url='https://stage.example', test_workspace=True)
+        with tempfile.TemporaryDirectory() as directory:
+            temporary = Path(directory)
+            config = temporary / 'site.json'
+            config.write_text(json.dumps(settings))
+            output = temporary / 'compiled'
+            export.main(['--config', str(config), '--output', str(output)])
+            self.assertEqual(len(list(output.rglob('*.html'))), 13)
+            account = (output / 'en/account.html').read_text()
+            public = (output / 'en/index.html').read_text()
+            self.assertIn('data-api-url="https://stage.example"', account)
+            self.assertIn('Temporary test workspace', account)
+            self.assertIn('Use fictional cases only.', account)
+            self.assertIn('/cyber-suraksha-2.0/google-test/en/privacy.html', account)
+            self.assertIn('https://accounts.google.com/gsi/client', account)
+            self.assertNotIn('https://accounts.google.com', public)
+            self.assertIn('content="strict-origin-when-cross-origin"', account)
+            self.assertIn('content="no-referrer"', public)
+        self.assertEqual((ROOT / 'source/site.json').read_bytes(), original)
+
+    def test_unconfigured_google_never_adds_identity_provider_or_inline_style_permissions(self):
+        settings = json.loads((ROOT / 'source/site.json').read_text())
+        settings['google_client_id'] = ''
+        with tempfile.TemporaryDirectory() as directory:
+            temporary = Path(directory)
+            config = temporary / 'site.json'
+            config.write_text(json.dumps(settings))
+            output = temporary / 'compiled'
+            export.main(['--config', str(config), '--output', str(output)])
+            for language in ('en', 'hi', 'te'):
+                account = (output / language / 'account.html').read_text()
+                self.assertNotIn('accounts.google.com', account)
+                self.assertNotIn('style-src-attr', account)
+                self.assertNotIn('style-src-elem', account)
+                self.assertNotIn('Temporary test workspace', account)
+
+    def test_build_refuses_to_replace_source_or_unrelated_output(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / 'keep'
+            output.mkdir()
+            marker = output / 'keep.txt'
+            marker.write_text('preserve me')
+            with self.assertRaises(ValueError):
+                export.main(['--output', str(output)])
+            self.assertEqual(marker.read_text(), 'preserve me')
+        for output in (ROOT, ROOT / 'source', ROOT / 'source/data', ROOT.parent):
+            with self.subTest(output=output), self.assertRaises(ValueError):
+                export.main(['--output', str(output)])
 
 if __name__ == '__main__':
     unittest.main()

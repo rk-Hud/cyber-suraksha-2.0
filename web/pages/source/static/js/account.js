@@ -41,7 +41,7 @@
         const controller = new AbortController();
         if (authenticated) pending.add(controller);
         const timer = setTimeout(() => controller.abort(), 25000);
-        let response;
+        let response, revokedCurrent = false;
         try {
           response = await transport(apiBase + path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), credentials: 'omit', redirect: 'error', referrerPolicy: 'no-referrer', cache: 'no-store', signal: controller.signal });
           if (Number(response.headers?.get('content-length') || 0) > 524288) throw new ApiError('msg_request_failed', response.status);
@@ -49,17 +49,17 @@
           if (text.length > 524288) throw new ApiError('msg_request_failed', response.status);
           let payload;
           try { payload = JSON.parse(text); } catch (_) { throw new ApiError('account_disconnected', response.status); }
-          if (authenticated && startRevision !== revision) throw new ApiError('account_request_cancelled');
+          if (startRevision !== revision) throw new ApiError('account_request_cancelled');
           const reference = typeof payload.requestId === 'string' && /^[A-Za-z0-9_-]{8,80}$/.test(payload.requestId) ? payload.requestId : '';
           if (!response.ok || payload.error) {
-            if (response.status === 401) clear();
+            if (response.status === 401 && authenticated && startRevision === revision) { clear(); revokedCurrent = true; }
             const code = typeof payload.error?.code === 'string' && /^[a-z_]{3,80}$/.test(payload.error.code) ? payload.error.code : 'msg_request_failed';
             throw new ApiError(code, response.status, reference);
           }
           if (!Object.prototype.hasOwnProperty.call(payload, 'data')) throw new ApiError('msg_request_failed', response.status, reference);
           return payload.data;
         } catch (error) {
-          if (authenticated && startRevision !== revision && error.code !== 'account_request_cancelled' && error.status !== 401) throw new ApiError('account_request_cancelled');
+          if (startRevision !== revision && !revokedCurrent && error.code !== 'account_request_cancelled') throw new ApiError('account_request_cancelled');
           if (error instanceof ApiError) throw error;
           throw new ApiError('account_disconnected');
         } finally { pending.delete(controller); clearTimeout(timer); }
@@ -67,7 +67,7 @@
     });
   }
   function validChallenge(value) {
-    if (!value || typeof value.id !== 'string' || typeof value.token !== 'string' || !/^[a-f0-9-]{36}$/.test(value.id) || !/^[A-Za-z0-9_-]{43}$/.test(value.token) || !Number.isFinite(expiry(value.expiresAt)) || expiry(value.expiresAt) <= Date.now()) throw new ApiError('msg_request_failed');
+    if (!value || typeof value.id !== 'string' || typeof value.token !== 'string' || !/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(value.id) || !/^[A-Za-z0-9_-]{43}$/.test(value.token) || !Number.isFinite(expiry(value.expiresAt)) || expiry(value.expiresAt) <= Date.now()) throw new ApiError('msg_request_failed');
     return { id: value.id, token: value.token, purpose: value.purpose, expiresAt: expiry(value.expiresAt) };
   }
   if (typeof module !== 'undefined' && module.exports) module.exports = { createClient, validatedBase, validChallenge, ApiError, expiry };
@@ -155,7 +155,8 @@
     }
   }
 
-  const state = { user: null, challenge: null, view: 'login', features: {}, mfaAt: 0, setup: null, caseData: null, returnView: 'admin', preserveReturn: false, pages: { cases: 1, admin: 1, users: 1 }, loaded: new Set() };
+  let readiness;
+  const state = { adminLogin: false, googleClientId: '', user: null, challenge: null, view: 'login', features: {}, mfaAt: 0, setup: null, caseData: null, returnView: 'admin', preserveReturn: false, pages: { cases: 1, admin: 1, users: 1 }, loaded: new Set() };
   const panels = app ? [...app.querySelectorAll('[data-account-panel]')] : [];
   const inFlight = new WeakSet();
   function message(code, error = false, reference = '') {
@@ -172,7 +173,7 @@
     const uri = document.getElementById('mfa-setup-uri'); if (uri) uri.value = '';
     const secret = document.getElementById('mfa-secret'); if (secret) secret.hidden = true;
     const confirm = document.getElementById('account-mfa-confirm'); if (confirm) confirm.hidden = true;
-    updateNavigation();
+    updateNavigation(); notifyGoogleState();
   }
   function handleError(error) {
     if (error.code === 'account_request_cancelled') return;
@@ -183,6 +184,11 @@
     message(error.code || 'error_generic', true, error.requestId || '');
   }
   async function task(work) { try { await work(); } catch (error) { handleError(error); } }
+  function googleState() {
+    const configuredId = document.documentElement.dataset.googleClientId || '';
+    return { enabled: Boolean(app && state.features.googleSignIn && configuredId && configuredId === state.googleClientId), citizenLogin: Boolean(app && !state.user && state.view === 'login' && !state.adminLogin), registration: state.features.googleRegistration === true };
+  }
+  function notifyGoogleState() { document.dispatchEvent(new CustomEvent('cyber-account-state')); }
   function updateAvailability() {
     app?.querySelectorAll('[data-email-required] button[type="submit"]').forEach(button => { button.disabled = !state.features.emailOtp; });
     app?.querySelectorAll('[data-registration-required] button[type="submit"]').forEach(button => { button.disabled = !state.features.registration || !state.features.emailOtp; });
@@ -215,7 +221,7 @@
     if (!publicViews.includes(name) && !state.user) { name = 'login'; message('account_auth_required', true); }
     if (['admin', 'users', 'content', 'mfa'].includes(name) && state.user?.role !== 'owner') { name = 'cases'; message('msg_forbidden', true); }
     if (!panels.some(panel => panel.dataset.accountPanel === name)) name = 'login';
-    state.view = name;
+    state.view = name; state.adminLogin = adminLogin; notifyGoogleState();
     panels.forEach(panel => { panel.hidden = panel.dataset.accountPanel !== name; });
     if (name === 'login') {
       document.getElementById('login-heading').textContent = t(adminLogin ? 'account_admin_title' : 'account_login_title');
@@ -359,30 +365,44 @@
     try {
       const health = await client.request('/api/v1/health');
       state.features = Object.fromEntries(['registration', 'emailOtp', 'complaints', 'admin', 'googleSignIn', 'googleRegistration'].map(key => [key, health.features?.[key] === true]));
+      state.googleClientId = typeof health.googleClientId === 'string' ? health.googleClientId : '';
       const code = !state.features.emailOtp ? 'account_mail_closed' : !state.features.registration ? 'account_registration_closed' : 'account_ready';
-      const status = document.getElementById(app ? 'account-service-status' : 'citizen-service-status'); if (status) status.textContent = state.features.googleSignIn ? 'Google citizen sign-in is available. Email-code sign-in remains separately configured.' : t(code);
-      updateAvailability();
+      const status = document.getElementById(app ? 'account-service-status' : 'citizen-service-status'); if (status) status.textContent = googleState().enabled ? t('google_service_ready') : t(code);
+      updateAvailability(); notifyGoogleState();
       client.request('/api/v1/public/content').then(safePublicContent).catch(() => {});
     } catch (error) {
       const status = document.getElementById(app ? 'account-service-status' : 'citizen-service-status'); if (status) status.textContent = t(error.code || 'account_disconnected');
-      state.features = {}; updateAvailability();
+      state.features = {}; updateAvailability(); notifyGoogleState();
     }
   }
-  // Invoked only by the Google Identity Services browser callback. Google JWTs
-  // are never treated as API sessions until verified by the backend.
-  root.CyberSurakshaGoogleSignIn = async ({ credential, nonce, consent }) => {
-    await task(async () => {
-      if (!state.features.googleSignIn || state.user) throw new ApiError('msg_service_unavailable', 503);
-      const data = await client.request('/api/v1/auth/google', 'POST', { credential, nonce, consent, locale: language });
-      if (data.user?.role !== 'citizen') throw new ApiError('msg_forbidden', 403);
-      client.setSession(data);
-      state.user = data.user;
-      state.challenge = null;
-      updateNavigation();
-      await showView('cases');
-    });
-  };
-  if (!app) { ready(); return; }
+  // The Google UI receives only a short-lived API challenge. Identity tokens
+  // never become application sessions until the server verifies and consumes it.
+  root.CyberSurakshaGoogleAuth = Object.freeze({
+    ready: () => readiness,
+    state: googleState,
+    async begin() {
+      if (!googleState().enabled || !googleState().citizenLogin) throw new ApiError('msg_service_unavailable', 503);
+      const data = await client.request('/api/v1/auth/google/challenge', 'POST', { locale: language });
+      const flow = validChallenge(data.challenge);
+      if (data.challenge.purpose !== 'google' || typeof data.challenge.nonce !== 'string') throw new ApiError('msg_request_failed');
+      return { ...flow, nonce: data.challenge.nonce };
+    },
+    async finish(values, stillCurrent) {
+      try {
+        if (!googleState().enabled || !googleState().citizenLogin || typeof stillCurrent !== 'function' || !stillCurrent()) throw new ApiError('account_request_cancelled');
+        const data = await client.request('/api/v1/auth/google', 'POST', { ...values, locale: language });
+        if (!stillCurrent()) throw new ApiError('account_request_cancelled');
+        if (data.user?.role !== 'citizen') throw new ApiError('msg_forbidden', 403);
+        client.setSession(data); state.user = data.user; state.challenge = null;
+        app.querySelectorAll('form').forEach(form => form.reset());
+        updateNavigation(); notifyGoogleState(); await showView('cases');
+      } catch (error) {
+        if (typeof stillCurrent !== 'function' || !stillCurrent()) throw new ApiError('account_request_cancelled');
+        handleError(error); throw error;
+      }
+    }
+  });
+  if (!app) { readiness = ready(); return; }
   app.querySelectorAll('[data-account-view]').forEach(button => button.addEventListener('click', () => showView(button.dataset.accountView)));
   updateNavigation();
   bindForm('account-register', async (values, form) => {
@@ -414,5 +434,5 @@
   }
   bindForm('account-mfa-confirm', async (values, form) => { await client.request('/api/v1/admin/mfa/confirm', 'POST', values, { authenticated: true }); form.reset(); await verifiedMfa(); });
   bindForm('account-mfa-verify', async (values, form) => { await client.request('/api/v1/admin/mfa/verify', 'POST', values, { authenticated: true }); form.reset(); await verifiedMfa(); });
-  const firstView = location.hash === '#admin' ? 'admin-login' : location.hash === '#register' ? 'register' : 'login'; showView(firstView); ready();
+  const firstView = location.hash === '#admin' ? 'admin-login' : location.hash === '#register' ? 'register' : 'login'; showView(firstView); readiness = ready();
 })(globalThis);

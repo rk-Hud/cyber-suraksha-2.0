@@ -6,7 +6,7 @@ import { createApi, seedContent } from '../src/app.js';
 
 export const ORIGIN = 'https://rk-hud.github.io';
 export const PASSWORD = 'Test site password 4821!';
-export async function fixture(t, overrides = {}) {
+export async function fixture(t, overrides = {}, dependencies = {}) {
   let supplied;
   if (process.env.TEST_DATABASE_URL) {
     const direct = new URL(process.env.TEST_DATABASE_URL);
@@ -34,10 +34,11 @@ export async function fixture(t, overrides = {}) {
     env.DATABASE_URL = target.href;
     const config = configuration(env), pool = createPool(config);
     await pool.query(await readFile(new URL('../sql/001-existing-portal.sql', import.meta.url), 'utf8'));
+    await pool.query(await readFile(new URL('../sql/002-google-citizen-auth.sql', import.meta.url), 'utf8'));
     await seedContent(pool);
     const mailbox = [];
     const transport = async message => { mailbox.push(message); };
-    api = createApi({ config, pool, testTransport: overrides.NO_MAIL ? undefined : transport });
+    api = createApi({ config, pool, testTransport: overrides.NO_MAIL ? undefined : transport, ...dependencies });
     api.mailbox = mailbox;
     api.request = async (path, { method = 'GET', data, token, origin = ORIGIN, headers = {} } = {}) => {
       const response = await api.app.request('/api/v1' + path, { method,

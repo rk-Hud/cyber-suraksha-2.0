@@ -9,7 +9,7 @@
   "scripts": {
     "test": "node --test test/*.test.js",
     "start": "node src/local-server.js",
-    "check": "node --check src/app.js && node --check src/index.js",
+    "check": "node --check src/app.js && node --check src/index.js && node --check src/google-oidc.js && node --check src/config.js",
     "db:init": "node src/migrate.js",
     "build": "node scripts/build.mjs"
   },
