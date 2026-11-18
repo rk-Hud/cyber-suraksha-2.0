@@ -358,9 +358,9 @@
   async function ready() {
     try {
       const health = await client.request('/api/v1/health');
-      state.features = Object.fromEntries(['registration', 'emailOtp', 'complaints', 'admin'].map(key => [key, health.features?.[key] === true]));
+      state.features = Object.fromEntries(['registration', 'emailOtp', 'complaints', 'admin', 'googleSignIn', 'googleRegistration'].map(key => [key, health.features?.[key] === true]));
       const code = !state.features.emailOtp ? 'account_mail_closed' : !state.features.registration ? 'account_registration_closed' : 'account_ready';
-      const status = document.getElementById(app ? 'account-service-status' : 'citizen-service-status'); if (status) status.textContent = t(code);
+      const status = document.getElementById(app ? 'account-service-status' : 'citizen-service-status'); if (status) status.textContent = state.features.googleSignIn ? 'Google citizen sign-in is available. Email-code sign-in remains separately configured.' : t(code);
       updateAvailability();
       client.request('/api/v1/public/content').then(safePublicContent).catch(() => {});
     } catch (error) {
@@ -368,6 +368,20 @@
       state.features = {}; updateAvailability();
     }
   }
+  // Invoked only by the Google Identity Services browser callback. Google JWTs
+  // are never treated as API sessions until verified by the backend.
+  root.CyberSurakshaGoogleSignIn = async ({ credential, nonce, consent }) => {
+    await task(async () => {
+      if (!state.features.googleSignIn || state.user) throw new ApiError('msg_service_unavailable', 503);
+      const data = await client.request('/api/v1/auth/google', 'POST', { credential, nonce, consent, locale: language });
+      if (data.user?.role !== 'citizen') throw new ApiError('msg_forbidden', 403);
+      client.setSession(data);
+      state.user = data.user;
+      state.challenge = null;
+      updateNavigation();
+      await showView('cases');
+    });
+  };
   if (!app) { ready(); return; }
   app.querySelectorAll('[data-account-view]').forEach(button => button.addEventListener('click', () => showView(button.dataset.accountView)));
   updateNavigation();

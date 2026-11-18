@@ -1,5 +1,6 @@
 {
   "origin": "https://rk-hud.github.io",
   "base_path": "/cyber-suraksha-2.0",
-  "api_url": "https://br-holy-darkness-az8i1rma-csportalapi.compute.c-3.ap-southeast-1.aws.neon.tech"
+  "api_url": "https://br-holy-darkness-az8i1rma-csportalapi.compute.c-3.ap-southeast-1.aws.neon.tech",
+  "google_client_id": ""
 }

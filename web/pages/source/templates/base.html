@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="{{ lang }}" data-base-path="{{ base_path }}" data-api-url="{{ api_url }}" data-account-page="{{ 'true' if is_account else 'false' }}">
+<html lang="{{ lang }}" data-base-path="{{ base_path }}" data-api-url="{{ api_url }}" data-google-client-id="{{ google_client_id if is_account else '' }}" data-account-page="{{ 'true' if is_account else 'false' }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -15,7 +15,7 @@
   <meta name="author" content="Jatoth Ramakrishna">
   <meta name="copyright" content="{{ year }} Jatoth Ramakrishna. CYBER SURAKSHA 2.0 is independently architected, developed, authored and owned by Jatoth Ramakrishna for public cybersecurity awareness.">
   <meta name="referrer" content="no-referrer">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src {{ csp_connect }}; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' {% if is_account and google_client_id %}https://accounts.google.com{% endif %}; {% if is_account and google_client_id %}frame-src https://accounts.google.com;{% endif %} style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src {{ csp_connect }}; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>{{ t('account_page_title') if is_account else t('page_title') }}</title>
   <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/cs-logo.svg') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/site.css') }}">
@@ -27,6 +27,7 @@
   <script src="{{ url_for('static', filename='js/ui.js') }}" defer></script>
   <script src="{{ url_for('static', filename='js/account_copy_' ~ lang ~ '.js') }}" defer></script>
   <script src="{{ url_for('static', filename='js/account.js') }}" defer></script>
+  {% if is_account %}<script src="{{ url_for('static', filename='js/google_signin.js') }}" defer></script>{% endif %}
 </head>
 <body id="top">
   <a class="skip-link" href="#main">{{ t('skip_content') }}</a>

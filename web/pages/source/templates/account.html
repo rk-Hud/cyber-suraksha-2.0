@@ -16,7 +16,7 @@
       <div><label class="field-label" for="login-email">{{ t('email') }}</label><input id="login-email" name="email" type="email" required autocomplete="username" maxlength="254"></div>
       <div><label class="field-label" for="login-password">{{ t('password') }}</label><input id="login-password" name="password" type="password" required autocomplete="current-password" minlength="12" maxlength="128"><p class="field-hint">{{ t('password_hint') }}</p></div>
       <button class="button button-dark" type="submit">{{ t('sign_in') }} →</button>
-    </form><button type="button" class="plain-button auth-secondary" data-account-view="forgot">{{ t('forgot_password') }}</button></div>
+    </form><div id="google-citizen-signin" hidden></div><button type="button" class="plain-button auth-secondary" data-account-view="forgot">{{ t('forgot_password') }}</button></div>
   </section>
 
   <section data-account-panel="register" class="auth-layout" hidden>

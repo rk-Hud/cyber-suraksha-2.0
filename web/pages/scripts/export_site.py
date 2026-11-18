@@ -97,6 +97,8 @@ def main():
  u=urlsplit(origin)
  if u.scheme!='https' or not u.hostname or u.path or u.query or u.fragment:raise ValueError('Invalid canonical origin')
  api_url,csp_connect=api_configuration(site.get('api_url',''))
+ google_client_id=site.get('google_client_id','')
+ if not isinstance(google_client_id,str) or google_client_id and not re.fullmatch(r'[0-9]+-[A-Za-z0-9_-]+\.apps\.googleusercontent\.com',google_client_id):raise ValueError('Invalid Google OAuth web client ID')
  agencies=read_json('agencies.json');advisory=read_json('advisory.json')
  if len(agencies)!=20 or len({a['id'] for a in agencies})!=20:raise ValueError('Expected twenty unique agencies')
  environment=Environment(loader=FileSystemLoader(SOURCE/'templates'),autoescape=select_autoescape(('html',)),undefined=StrictUndefined)
@@ -114,7 +116,7 @@ def main():
   data=json.dumps(copy,ensure_ascii=False,separators=(',',':')).replace('\u2028','\\u2028').replace('\u2029','\\u2029')
   (OUTPUT/'static/js'/f'account_copy_{lang}.js').write_text('window.CyberSurakshaAccountCopy=Object.freeze('+data+');\n')
   directory=OUTPUT/lang;directory.mkdir()
-  context=dict(site_origin=origin,base_path=base,api_url=api_url,csp_connect=csp_connect,lang=lang,t=lambda key,d=copy:d[key],year=datetime.now(ZoneInfo('Asia/Kolkata')).year,agencies=agencies,advisory=advisory)
+  context=dict(site_origin=origin,base_path=base,api_url=api_url,csp_connect=csp_connect,google_client_id=google_client_id,lang=lang,t=lambda key,d=copy:d[key],year=datetime.now(ZoneInfo('Asia/Kolkata')).year,agencies=agencies,advisory=advisory)
   for account,name in ((False,'index.html'),(True,'account.html')):
    content=environment.get_template(name).render(**context,is_account=account)
    linked+=validate_page(content,lang,account)

@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { randomInt, randomBytes, timingSafeEqual } from 'node:crypto';
 import { configuration } from './config.js';
+import { verifyGoogleCredential, googleCredentialFingerprint } from './google-oidc.js';
 import { createPool, transaction } from './db.js';
 import { createMailer, DeliveryError, dispatchNotifications } from './mail.js';
 import { digest, newToken, newId, hashPassword, verifyPassword, encryptTotp, decryptTotp, generateTotpSecret, totpStep, totpUri } from './crypto.js';
@@ -217,6 +218,8 @@ export function createApi(options = {}) {
     return ok(c, { status: database ? 'ok' : 'unavailable', features: {
       registration: database && config.authReady && mailer.ready && config.registrationEnabled,
       emailOtp: database && config.authReady && mailer.ready,
+      googleSignIn: database && config.authReady && config.googleSignIn,
+      googleRegistration: database && config.authReady && config.googleSignIn && config.googleRegistration,
       complaints: database && config.authReady, admin: database && config.authReady && config.totpKey.length >= 32,
     } }, database ? 200 : 503);
   });
@@ -238,6 +241,53 @@ export function createApi(options = {}) {
     const payload = user ? {} : { name, password_hash: await hashPassword(value.password) };
     return ok(c, { challenge: await issue(c, address, user ? 'existing_register' : 'register', user, payload, language) });
   });
+
+  // Federated sign-in is an independent citizen-only path. Never automatically
+  // link by email to an existing password account (especially not an owner).
+  app.post('/api/v1/auth/google', async c => {
+    if (!config.googleSignIn) throw new ApiError('msg_service_unavailable', 503);
+    const value = await body(c, ['credential', 'nonce'], ['locale', 'consent']);
+    await rate('google:global', 40, 60);
+    let google;
+    try { google = await verifyGoogleCredential(value.credential, { clientId: config.googleClientId, nonce: value.nonce }); }
+    catch { throw new ApiError('msg_invalid_credentials', 401); }
+    let address;
+    try { address = email(google.email); } catch { throw new ApiError('msg_invalid_credentials', 401); }
+    if (address === config.adminEmail) throw new ApiError('msg_forbidden', 403);
+    await authRates(address, 'google');
+    const language = locale(value.locale);
+    const passwordHash = config.googleRegistration ? await hashPassword('unusable-google-only-' + newToken()) : null;
+    const fingerprint = googleCredentialFingerprint(value.credential);
+    const result = await transaction(pool, async db => {
+      await authLock(db, address);
+      const inserted = await db.query('INSERT INTO portal_google_credential_uses(fingerprint,used_at) VALUES($1,$2) ON CONFLICT DO NOTHING RETURNING fingerprint', [fingerprint, now()]);
+      if (!inserted.rowCount) throw new ApiError('msg_invalid_credentials', 401);
+      const binding = (await db.query('SELECT user_id FROM portal_google_identities WHERE google_sub=$1 FOR UPDATE', [google.subject])).rows[0];
+      let user;
+      if (binding) {
+        user = (await db.query(userQuery + ' FOR UPDATE', [binding.user_id])).rows[0];
+        if (!user?.active || user.role !== 'citizen') throw new ApiError('msg_invalid_credentials', 401);
+      } else {
+        if (!config.googleRegistration) throw new ApiError('msg_registration_closed', 403);
+        if (value.consent !== true) throw new ApiError('msg_consent_required', 422);
+        if ((await db.query('SELECT id FROM portal_users WHERE email=$1', [address])).rowCount) {
+          throw new ApiError('msg_invalid_credentials', 409);
+        }
+        const displayName = text(google.name.trim() || 'Citizen', 2, 100, 'msg_name_invalid');
+        const created = await db.query(`INSERT INTO portal_users
+          (id,email,name,password_hash,language,role,active,verified_at,created_at,updated_at,version,totp_last_step)
+          VALUES($1,$2,$3,$4,$5,'citizen',true,$6,$6,$6,1,-1) RETURNING *`,
+          [newId(),address,displayName,passwordHash,language,now()]);
+        user = created.rows[0];
+        await db.query('INSERT INTO portal_google_identities(google_sub,user_id,linked_at) VALUES($1,$2,$3)', [google.subject,user.id,now()]);
+      }
+      await loginEvent(db, c, user.email, true, 'google_verified_oidc', user);
+      const session = await newSession(db, user.id);
+      return { token: session.token, user: publicUser(user), expiresAt: session.expiresAt };
+    });
+    return ok(c, result);
+  });
+
   app.post('/api/v1/auth/login', async c => {
     const value = await body(c, ['email', 'password'], ['locale']);
     const address = email(value.email), language = locale(value.locale);
