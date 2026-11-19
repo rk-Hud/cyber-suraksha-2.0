@@ -143,6 +143,11 @@ export function createStagingOperator(options = {}) {
     let verifiedEmail;
     try { verifiedEmail = normalizeEmail(google.email); } catch { reject(); }
     if (google.subject !== settings.subject || verifiedEmail !== settings.email) reject();
+    // Never promote an already-linked Google citizen to the operator role,
+    // even if private configuration is accidentally pointed at that subject.
+    const existingCitizen = await pool.query(
+      'SELECT 1 FROM portal_google_identities WHERE google_sub=$1 LIMIT 1', [google.subject]);
+    if (existingCitizen.rowCount) reject('operator_forbidden', 403);
     return google;
   }
   async function consumeProof(db, value) {
