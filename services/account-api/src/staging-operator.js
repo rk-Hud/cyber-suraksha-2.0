@@ -11,7 +11,7 @@ import { createGoogleVerifier, googleCredentialFingerprint } from './google-oidc
 import { createPool, transaction } from './db.js';
 import { digest, newId, newToken, encryptTotp, decryptTotp,
   generateTotpSecret, hashPassword, verifyPassword, totpStep, totpUri } from './crypto.js';
-import { fields, password } from './validation.js';
+import { ApiError, fields, password } from './validation.js';
 
 const now = () => Math.floor(Date.now() / 1000);
 const BRANCH = 'br-sweet-band-azhwai4r';
@@ -24,7 +24,9 @@ class OperatorError extends Error {
 const reject = (code = 'operator_invalid', status = 401) => { throw new OperatorError(code, status); };
 
 function operatorSettings(env, config) {
-  const approvedEmail = normalizeEmail(env.STAGING_OWNER_EMAIL || '');
+  let approvedEmail = '';
+  try { approvedEmail = normalizeEmail(env.STAGING_OWNER_EMAIL || ''); }
+  catch { /* Missing or invalid private owner approval fails closed. */ }
   const adminEmail = config.adminEmail;
   const enabled = env.STAGING_OPERATOR_ENABLED === '1'
     && env.STAGING_BRANCH_ID === BRANCH
@@ -88,6 +90,7 @@ export function createStagingOperator(options = {}) {
   });
   app.onError((error, c) => {
     if (error instanceof OperatorError) return failure(c, error.code, error.status);
+    if (error instanceof ApiError) return failure(c, 'operator_invalid', error.status);
     // Never log request bodies, JWTs, credentials, emails or provider SQL text.
     console.error('staging_operator_failed', error?.constructor?.name || 'Error');
     return failure(c, 'operator_unavailable', 503);
@@ -137,7 +140,9 @@ export function createStagingOperator(options = {}) {
     try {
       google = await verifyGoogle(value.credential, { clientId: config.googleClientId, nonce: value.nonce });
     } catch { reject(); }
-    if (google.subject !== settings.subject || normalizeEmail(google.email) !== settings.email) reject();
+    let verifiedEmail;
+    try { verifiedEmail = normalizeEmail(google.email); } catch { reject(); }
+    if (google.subject !== settings.subject || verifiedEmail !== settings.email) reject();
     return google;
   }
   async function consumeProof(db, value) {
