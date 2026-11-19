@@ -106,6 +106,22 @@ test('staging owner provisioning requires approved Google subject, private key a
   const before = (await api.pool.query('SELECT reference,user_id,status FROM portal_complaints ORDER BY reference')).rows;
   await api.pool.query('INSERT INTO portal_google_identities(google_sub,user_id,linked_at) VALUES($1,$2,$3),($4,$5,$6)',
     ['11111111111111111111', a.user.id, 100, '22222222222222222222', b.user.id, 100]);
+  // Pinning an existing citizen's Google subject is never proof of ownership.
+  const misconfigured = env({ ADMIN_EMAIL: 'citizen-a@example.test',
+    STAGING_OWNER_EMAIL: 'citizen-a@example.test',
+    STAGING_OWNER_GOOGLE_SUB: '11111111111111111111' });
+  const linkedCitizenVerifier = async (credential, { nonce }) => {
+    if (credential !== 'linked.' + nonce) throw new Error('invalid test credential');
+    return { subject: '11111111111111111111', email: 'citizen-a@example.test' };
+  };
+  const linkedOp = createStagingOperator({ env: misconfigured, config: configuration(misconfigured),
+    pool: api.pool, googleVerifier: linkedCitizenVerifier });
+  let linkedProof = await challenge(linkedOp);
+  const linkedAttempt = await request(linkedOp, '/begin', {
+    ...credentials(linkedProof, 'linked'), approvalKey,
+    password: ownerPassword, confirmPassword: ownerPassword });
+  assert.equal(linkedAttempt.status, 403);
+
   const op = createStagingOperator({ env: env(), config: configuration(env()), pool: api.pool, googleVerifier });
 
   // Public or cross-origin requests never bootstrap an owner.
@@ -130,9 +146,18 @@ test('staging owner provisioning requires approved Google subject, private key a
   const provisionId = enrolled.json.data.provisionId;
   const timeStep = Math.floor(Date.now() / 30000);
   proof = await challenge(op);
+  const validWindow = new Set([-1, 0, 1, 2].map(offset =>
+    codeFor(enrolled.json.data.secret, timeStep + offset)));
+  let invalidCode = '000000';
+  while (validWindow.has(invalidCode)) {
+    invalidCode = String((Number(invalidCode) + 1) % 1000000).padStart(6, '0');
+  }
   const wrong = await request(op, '/finish', {
-    ...credentials(proof), approvalKey, provisionId, code: 'abcdef' });
+    ...credentials(proof), approvalKey, provisionId, code: invalidCode });
   assert.equal(wrong.status, 401);
+  assert.equal((await api.pool.query(
+    'SELECT attempts FROM cs_stage_operator_pending WHERE id=$1',
+    [provisionId])).rows[0].attempts, 1);
   proof = await challenge(op);
   const confirmed = await request(op, '/finish', {
     ...credentials(proof), approvalKey, provisionId,
