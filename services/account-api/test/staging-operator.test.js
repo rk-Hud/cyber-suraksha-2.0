@@ -98,11 +98,11 @@ test('staging owner provisioning requires approved Google subject, private key a
   const a = await signup(api, 'citizen-a@example.test', 'Citizen A');
   const b = await signup(api, 'citizen-b@example.test', 'Citizen B');
   const aCase = await api.request('/cases', { method: 'POST', token: a.token,
-    data: { subject: 'Fictional case A', category: 'account', details: 'Synthetic test data', consent: true } });
+    data: { subject: 'Fictional case A', category: 'account', details: 'Synthetic test case details only', consent: true } });
   const bCase = await api.request('/cases', { method: 'POST', token: b.token,
-    data: { subject: 'Fictional case B', category: 'account', details: 'Synthetic test data', consent: true } });
-  assert.equal(aCase.status, 200);
-  assert.equal(bCase.status, 200);
+    data: { subject: 'Fictional case B', category: 'account', details: 'Synthetic test case details only', consent: true } });
+  assert.equal(aCase.status, 201);
+  assert.equal(bCase.status, 201);
   const before = (await api.pool.query('SELECT reference,user_id,status FROM portal_complaints ORDER BY reference')).rows;
   await api.pool.query('INSERT INTO portal_google_identities(google_sub,user_id,linked_at) VALUES($1,$2,$3),($4,$5,$6)',
     ['11111111111111111111', a.user.id, 100, '22222222222222222222', b.user.id, 100]);
