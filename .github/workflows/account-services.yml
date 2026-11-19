@@ -46,6 +46,11 @@ jobs:
           npm run check
           npm test
           npm run build
+          node --check src/staging-operator.js
+          node --check src/index-staging-operator.js
+          node --check scripts/build-staging-operator.mjs
+          node scripts/build-staging-operator.mjs
+          test -s dist-operator/index.mjs
       - name: Verify multilingual Pages and browser tools
         working-directory: web/pages
         run: |
