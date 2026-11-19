@@ -1,0 +1,292 @@
+/**
+ * Isolated, opt-in staging operator Function. Never import this entrypoint into
+ * the citizen Function. It cannot create an owner without a preapproved,
+ * Google-verified subject, a private bootstrap key and an actual TOTP code.
+ * No database mutation happens merely by importing this module.
+ */
+import { Hono } from 'hono';
+import { createHash, timingSafeEqual } from 'node:crypto';
+import { configuration, normalizeEmail } from './config.js';
+import { createGoogleVerifier, googleCredentialFingerprint } from './google-oidc.js';
+import { createPool, transaction } from './db.js';
+import { digest, newId, newToken, encryptTotp, decryptTotp,
+  generateTotpSecret, hashPassword, verifyPassword, totpStep, totpUri } from './crypto.js';
+import { fields, password } from './validation.js';
+
+const now = () => Math.floor(Date.now() / 1000);
+const BRANCH = 'br-sweet-band-azhwai4r';
+const identifier = value => typeof value === 'string' && /^[a-f0-9-]{36}$/.test(value);
+const hexEqual = (a, b) => typeof a === 'string' && typeof b === 'string'
+  && a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
+class OperatorError extends Error {
+  constructor(code, status = 400) { super(code); this.code = code; this.status = status; }
+}
+const reject = (code = 'operator_invalid', status = 401) => { throw new OperatorError(code, status); };
+
+function operatorSettings(env, config) {
+  const approvedEmail = normalizeEmail(env.STAGING_OWNER_EMAIL || '');
+  const adminEmail = config.adminEmail;
+  const enabled = env.STAGING_OPERATOR_ENABLED === '1'
+    && env.STAGING_BRANCH_ID === BRANCH
+    && env.STAGING_OWNER_GOOGLE_SUB && /^[0-9]{8,32}$/.test(env.STAGING_OWNER_GOOGLE_SUB)
+    && approvedEmail === adminEmail
+    && config.googleClientId
+    && config.authReady
+    && config.totpKey.length >= 48
+    && config.sessionKey.length >= 48
+    && config.otpKey.length >= 48
+    && typeof env.STAGING_OPERATOR_APPROVAL_KEY === 'string'
+    && env.STAGING_OPERATOR_APPROVAL_KEY.length >= 48
+    && env.STAGING_OPERATOR_APPROVAL_KEY !== config.totpKey
+    && env.STAGING_OPERATOR_APPROVAL_KEY !== config.sessionKey
+    && env.STAGING_OPERATOR_APPROVAL_KEY !== config.otpKey;
+  return { enabled: Boolean(enabled), subject: env.STAGING_OWNER_GOOGLE_SUB, email: approvedEmail };
+}
+
+export function createStagingOperator(options = {}) {
+  const env = options.env || process.env;
+  const config = options.config || configuration(env);
+  if (options.googleVerifier && config.nodeEnv !== 'test') throw new Error('Only tests may inject Google verification');
+  const settings = operatorSettings(env, config);
+  const pool = options.pool || createPool(config);
+  const verifyGoogle = options.googleVerifier || createGoogleVerifier();
+  const app = new Hono();
+  const safe = (c, data, status = 200) => c.json({ data }, status);
+  const failure = (c, code, status) => c.json({ error: { code } }, status);
+  const hashed = (purpose, value) => digest(config.otpKey, 'operator:' + purpose, value);
+  const secureApproval = value => {
+    const expected = hashed('approval', env.STAGING_OPERATOR_APPROVAL_KEY || '');
+    if (typeof value !== 'string' || value.length > 512 || !hexEqual(hashed('approval', value), expected)) reject();
+  };
+  const ready = () => { if (!settings.enabled) reject('operator_disabled', 503); };
+
+  app.use('*', async (c, next) => {
+    c.header('Cache-Control', 'no-store');
+    c.header('X-Content-Type-Options', 'nosniff');
+    c.header('X-Frame-Options', 'DENY');
+    c.header('Referrer-Policy', 'no-referrer');
+    c.header('Strict-Transport-Security', 'max-age=31536000');
+    c.header('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'; base-uri 'none'");
+    c.header('X-Robots-Tag', 'noindex,nofollow');
+    c.header('Vary', 'Origin');
+    if (c.req.header('Content-Encoding') || c.req.header('Transfer-Encoding')) return failure(c, 'operator_invalid', 400);
+    const origin = c.req.header('Origin');
+    if (origin && !config.origins.includes(origin)) return failure(c, 'operator_forbidden', 403);
+    if (origin) c.header('Access-Control-Allow-Origin', origin);
+    if (c.req.method === 'OPTIONS') {
+      const requested = (c.req.header('Access-Control-Request-Headers') || '').toLowerCase()
+        .split(',').map(x => x.trim()).filter(Boolean);
+      const method = c.req.header('Access-Control-Request-Method') || '';
+      if (!origin || method !== 'POST' || requested.some(x => x !== 'content-type')) {
+        return failure(c, 'operator_forbidden', 403);
+      }
+      c.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+      c.header('Access-Control-Allow-Headers', 'Content-Type');
+      return c.body(null, 204);
+    }
+    await next();
+  });
+  app.onError((error, c) => {
+    if (error instanceof OperatorError) return failure(c, error.code, error.status);
+    // Never log request bodies, JWTs, credentials, emails or provider SQL text.
+    console.error('staging_operator_failed', error?.constructor?.name || 'Error');
+    return failure(c, 'operator_unavailable', 503);
+  });
+  app.notFound(c => failure(c, 'operator_not_found', 404));
+  async function body(c, required) {
+    if (!/^application\/json(?:;\s*charset=utf-8)?$/i.test(c.req.header('Content-Type') || ''))
+      reject('operator_invalid', 415);
+    const declared = c.req.header('Content-Length');
+    if (declared && (!/^[0-9]{1,6}$/.test(declared) || +declared > 16384))
+      reject('operator_invalid', 413);
+    const reader = c.req.raw.body?.getReader();
+    if (!reader) reject('operator_invalid', 400);
+    const chunks = []; let size = 0;
+    try {
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        size += value.byteLength;
+        if (size > 16384) { await reader.cancel(); reject('operator_invalid', 413); }
+        chunks.push(value);
+      }
+      const raw = Buffer.concat(chunks.map(x => Buffer.from(x)), size);
+      return fields(JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(raw)), required);
+    } catch (error) {
+      if (error instanceof OperatorError) throw error;
+      reject('operator_invalid', 400);
+    } finally { reader.releaseLock(); }
+  }
+  async function rate(scope, max, seconds) {
+    const window = Math.floor(now() / seconds) * seconds;
+    const key = hashed('rate', scope);
+    const result = await pool.query(
+      'INSERT INTO portal_rate_buckets(key,"window",count) VALUES($1,$2,1) '
+      + 'ON CONFLICT(key,"window") DO UPDATE SET count=portal_rate_buckets.count+1 RETURNING count',
+      [key, window]);
+    if (result.rows[0].count > max) reject('operator_rate_limited', 429);
+  }
+  async function credentialProof(value) {
+    if (!identifier(value.challengeId) || typeof value.nonce !== 'string'
+      || !/^[A-Za-z0-9_-]{43}$/.test(value.nonce)) reject();
+    const challenge = (await pool.query(
+      'SELECT * FROM cs_stage_operator_challenges WHERE id=$1', [value.challengeId])).rows[0];
+    if (!challenge || challenge.consumed_at !== null || Number(challenge.expires_at) <= now()
+      || !hexEqual(challenge.nonce_hash, hashed('nonce', value.nonce))) reject();
+    let google;
+    try {
+      google = await verifyGoogle(value.credential, { clientId: config.googleClientId, nonce: value.nonce });
+    } catch { reject(); }
+    if (google.subject !== settings.subject || normalizeEmail(google.email) !== settings.email) reject();
+    return google;
+  }
+  async function consumeProof(db, value) {
+    const row = (await db.query(
+      'SELECT * FROM cs_stage_operator_challenges WHERE id=$1 FOR UPDATE', [value.challengeId])).rows[0];
+    if (!row || row.consumed_at !== null || Number(row.expires_at) <= now()
+      || !hexEqual(row.nonce_hash, hashed('nonce', value.nonce))) reject();
+    const fingerprint = googleCredentialFingerprint(value.credential);
+    const seen = await db.query(
+      'INSERT INTO cs_stage_operator_credential_uses(fingerprint,used_at) VALUES($1,$2) '
+      + 'ON CONFLICT DO NOTHING RETURNING fingerprint', [fingerprint, now()]);
+    if (!seen.rowCount) reject();
+    await db.query(
+      'UPDATE cs_stage_operator_challenges SET consumed_at=$1 WHERE id=$2', [now(), value.challengeId]);
+  }
+  async function audit(db, actorId, action, record) {
+    await db.query(
+      'INSERT INTO portal_audit_events(id,actor_id,action,record,metadata_json,created_at) '
+      + "VALUES($1,$2,$3,$4,'{}',$5)", [newId(), actorId, action, record, now()]);
+  }
+  async function loginRecord(db, actor, succeeded) {
+    await db.query(
+      'INSERT INTO portal_login_events(id,user_id,email,name,success,reason,ip_label,user_agent,created_at) '
+      + 'VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)',
+      [newId(), actor?.id || null, settings.email, actor?.name || '',
+        succeeded, succeeded ? 'staging_google_password_totp' : 'staging_operator_denied', 'unavailable', '', now()]);
+  }
+  app.get('/operator/v1/health', c => safe(c, {
+    status: settings.enabled ? 'configuration_present' : 'disabled',
+    googleClientId: settings.enabled ? config.googleClientId : '',
+    acceptsRealComplaints: false,
+  }, settings.enabled ? 200 : 503));
+  app.post('/operator/v1/challenge', async c => {
+    ready(); await body(c, []);
+    await rate('challenge', 30, 60);
+    const id = newId(), nonce = newToken(), expiresAt = now() + 300;
+    await pool.query('INSERT INTO cs_stage_operator_challenges(id,nonce_hash,created_at,expires_at) '
+      + 'VALUES($1,$2,$3,$4)', [id, hashed('nonce', nonce), now(), expiresAt]);
+    return safe(c, { challengeId: id, nonce, expiresAt });
+  });
+  app.post('/operator/v1/begin', async c => {
+    ready();
+    const value = await body(c, ['challengeId', 'nonce', 'credential', 'approvalKey', 'password', 'confirmPassword']);
+    await rate('begin', 12, 900);
+    secureApproval(value.approvalKey);
+    password(value.password, value.confirmPassword);
+    const google = await credentialProof(value);
+    const secret = generateTotpSecret();
+    const encrypted = encryptTotp(secret, config.totpKey);
+    const passwordHash = await hashPassword(value.password);
+    const id = newId(), expiresAt = now() + 600;
+    await transaction(pool, async db => {
+      await db.query("SELECT pg_advisory_xact_lock(hashtextextended('cs-stage:owner:bootstrap',0))");
+      await consumeProof(db, value);
+      const occupied = await db.query(
+        "SELECT id FROM portal_users WHERE role='owner' OR email=$1 LIMIT 1 FOR UPDATE",
+        [settings.email]);
+      if (occupied.rowCount) reject('operator_owner_exists', 409);
+      await db.query('INSERT INTO cs_stage_operator_pending '
+        + '(id,owner_google_sub,owner_email,password_hash,encrypted_totp,attempts,created_at,expires_at) '
+        + 'VALUES($1,$2,$3,$4,$5,0,$6,$7)',
+        [id, google.subject, settings.email, passwordHash, encrypted, now(), expiresAt]);
+    });
+    // The seed is displayed once, only to the Google-verified operator.
+    // Do not store it in localStorage or share a browser screenshot.
+    return safe(c, { provisionId: id, secret, uri: totpUri(secret, settings.email), expiresAt });
+  });
+  app.post('/operator/v1/finish', async c => {
+    ready();
+    const value = await body(c, ['challengeId', 'nonce', 'credential', 'approvalKey', 'provisionId', 'code']);
+    await rate('finish', 20, 900);
+    secureApproval(value.approvalKey);
+    await credentialProof(value);
+    if (!identifier(value.provisionId) || typeof value.code !== 'string'
+      || !/^[0-9]{6}$/.test(value.code)) reject();
+    const result = await transaction(pool, async db => {
+      await db.query("SELECT pg_advisory_xact_lock(hashtextextended('cs-stage:owner:bootstrap',0))");
+      await consumeProof(db, value);
+      const pending = (await db.query(
+        'SELECT * FROM cs_stage_operator_pending WHERE id=$1 FOR UPDATE', [value.provisionId])).rows[0];
+      if (!pending || pending.owner_google_sub !== settings.subject || pending.owner_email !== settings.email
+        || Number(pending.expires_at) <= now() || pending.attempts >= 5)
+        return { error: 'operator_invalid' };
+      const secret = decryptTotp(pending.encrypted_totp, config.totpKey);
+      const step = totpStep(value.code, secret);
+      if (step === null) {
+        await db.query('UPDATE cs_stage_operator_pending SET attempts=attempts+1 WHERE id=$1', [pending.id]);
+        return { error: 'operator_invalid' };
+      }
+      const occupied = await db.query(
+        "SELECT id FROM portal_users WHERE role='owner' OR email=$1 LIMIT 1 FOR UPDATE",
+        [settings.email]);
+      if (occupied.rowCount) return { error: 'operator_owner_exists', status: 409 };
+      const actor = { id: newId(), name: 'Staging Owner' };
+      await db.query(
+        'INSERT INTO portal_users(id,email,name,password_hash,language,role,active,verified_at,created_at,updated_at,version,totp_secret,totp_last_step) '
+        + "VALUES($1,$2,$3,$4,'en','owner',true,$5,$5,$5,1,$6,$7)",
+        [actor.id, settings.email, actor.name, pending.password_hash, now(), pending.encrypted_totp, step]);
+      await db.query('DELETE FROM cs_stage_operator_pending WHERE id=$1', [pending.id]);
+      await audit(db, actor.id, 'staging.owner.provisioned', actor.id);
+      await loginRecord(db, actor, true);
+      return { provisioned: true };
+    });
+    if (result.error) reject(result.error, result.status || 401);
+    return safe(c, result);
+  });
+  app.post('/operator/v1/login', async c => {
+    ready();
+    const value = await body(c, ['challengeId', 'nonce', 'credential', 'password', 'code']);
+    await rate('login', 8, 900);
+    await credentialProof(value);
+    if (typeof value.password !== 'string' || value.password.length > 128
+      || typeof value.code !== 'string' || !/^[0-9]{6}$/.test(value.code)) reject();
+    const candidate = (await pool.query(
+      "SELECT * FROM portal_users WHERE email=$1 AND role='owner' AND active=true",
+      [settings.email])).rows[0];
+    if (!candidate || !await verifyPassword(value.password, candidate.password_hash)) {
+      await loginRecord(pool, candidate, false);
+      reject();
+    }
+    const result = await transaction(pool, async db => {
+      const actor = (await db.query(
+        "SELECT * FROM portal_users WHERE id=$1 AND role='owner' AND active=true FOR UPDATE",
+        [candidate.id])).rows[0];
+      if (!actor || actor.email !== settings.email || actor.version !== candidate.version
+        || actor.password_hash !== candidate.password_hash || !actor.totp_secret)
+        return null;
+      const secret = decryptTotp(actor.totp_secret, config.totpKey);
+      const step = totpStep(value.code, secret, actor.totp_last_step);
+      if (step === null) {
+        await loginRecord(db, actor, false);
+        return null;
+      }
+      await consumeProof(db, value);
+      await db.query('UPDATE portal_users SET totp_last_step=$1 WHERE id=$2', [step, actor.id]);
+      const token = newToken(), id = newId(), seconds = now();
+      await db.query(
+        'INSERT INTO portal_sessions(id,token_hash,user_id,created_at,expires_at,authenticated_at,mfa_at) '
+        + 'VALUES($1,$2,$3,$4,$5,$4,$4)',
+        [id, digest(config.sessionKey, 'api-v1:session', token), actor.id, seconds, seconds + 1800]);
+      await audit(db, actor.id, 'staging.owner.mfa_login', actor.id);
+      await loginRecord(db, actor, true);
+      return { token, expiresAt: seconds + 1800, mfaVerified: true };
+    });
+    if (!result) reject();
+    // Issued bearer works with the existing citizen staging Function's
+    // /api/v1/admin/* endpoints iff both staging Functions share the same
+    // API_SESSION_KEY and ADMIN_EMAIL. Never use a production session key.
+    return safe(c, result);
+  });
+  return { app, pool, settings };
+}
