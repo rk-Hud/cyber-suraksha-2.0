@@ -197,6 +197,43 @@ export function createStagingOperator(options = {}) {
     googleClientId: settings.enabled ? config.googleClientId : '',
     acceptsRealComplaints: false,
   }, settings.enabled ? 200 : 503));
+  // Verification-only, nonprivileged Google proof. Safe while operator enrollment
+  // is disabled: a verified identity is NOT an administrator account or session.
+  app.post('/operator/v1/identity-challenge', async c => {
+    await body(c, []);
+    if (env.STAGING_BRANCH_ID !== BRANCH || !config.googleClientId || !settings.email)
+      reject('operator_disabled', 503);
+    await rate('operator-identity-challenge', 12, 900);
+    const id = newId(), nonce = newToken(), expiresAt = now() + 300;
+    await pool.query('INSERT INTO cs_stage_operator_challenges(id,nonce_hash,created_at,expires_at) '
+      + 'VALUES($1,$2,$3,$4)', [id, hashed('nonce', nonce), now(), expiresAt]);
+    return safe(c, { challengeId: id, nonce, expiresAt, googleClientId: config.googleClientId });
+  });
+  app.post('/operator/v1/identity-proof', async c => {
+    const value = await body(c, ['challengeId', 'nonce', 'credential']);
+    if (env.STAGING_BRANCH_ID !== BRANCH || !config.googleClientId || !settings.email)
+      reject('operator_disabled', 503);
+    await rate('operator-identity-proof', 12, 900);
+    if (!identifier(value.challengeId) || typeof value.nonce !== 'string'
+      || !/^[A-Za-z0-9_-]{43}$/.test(value.nonce)) reject();
+    const challenge = (await pool.query(
+      'SELECT * FROM cs_stage_operator_challenges WHERE id=$1', [value.challengeId])).rows[0];
+    if (!challenge || challenge.consumed_at !== null || Number(challenge.expires_at) <= now()
+      || !hexEqual(challenge.nonce_hash, hashed('nonce', value.nonce))) reject();
+    let google;
+    try {
+      google = await verifyGoogle(value.credential, {clientId: config.googleClientId, nonce: value.nonce});
+    } catch { reject(); }
+    let verifiedEmail;
+    try { verifiedEmail = normalizeEmail(google.email); } catch { reject(); }
+    if (verifiedEmail !== settings.email || !/^[0-9]{8,32}$/.test(google.subject))
+      reject('operator_forbidden', 403);
+    const citizen = await pool.query(
+      'SELECT 1 FROM portal_google_identities WHERE google_sub=$1 LIMIT 1', [google.subject]);
+    if (citizen.rowCount) reject('operator_forbidden', 403);
+    await transaction(pool, async db => { await consumeProof(db, value); });
+    return safe(c, { verifiedEmail, verifiedGoogleSub: google.subject, operatorEnrolled: false });
+  });
   app.post('/operator/v1/challenge', async c => {
     ready(); await body(c, []);
     await rate('challenge', 30, 60);
