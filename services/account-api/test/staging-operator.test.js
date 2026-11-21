@@ -293,6 +293,44 @@ test('staging owner provisioning requires approved Google subject, private key a
   assert.deepEqual(audits.map(x => x.action).sort(),
     ['staging.owner.mfa_login', 'staging.owner.provisioned', 'staging.owner.case_updated',
       'staging.owner.logout'].sort());
+
+  // The fixture is disposable PostgreSQL only. Create synthetic rows after
+  // invariants above so existing citizen/case preservation checks remain valid.
+  await api.pool.query(`
+    INSERT INTO portal_complaints(
+      id,reference,user_id,subject,category,details,status,
+      consent_at,created_at,updated_at,version)
+    SELECT md5('synthetic-page-' || g::text),
+      'CS-SYN-PAGE-' || lpad(g::text,3,'0'),$1,
+      'Synthetic pagination case ' || g::text,'other',
+      'Safe fictional pagination fixture', 'pending',
+      1750000000,1750000000 + g,1750000000 + g,1
+    FROM generate_series(1,23) AS g`, [a.user.id]);
+  const firstPage = await op.app.request('/operator/v1/workspace/cases?'
+    + 'q=CS-SYN-PAGE&status=pending&page=1', {
+    headers: { Authorization: 'Bearer ' + bearer.json.data.token, Origin: origin } });
+  // The original operator bearer was explicitly revoked above.
+  assert.equal(firstPage.status, 401, 'logout revokes even synthetic paginated access');
+
+  const newProof = await challenge(op);
+  const again = await request(op, '/login', {
+    ...credentials(newProof), password: ownerPassword,
+    code: codeFor(enrolled.json.data.secret, timeStep + 2) });
+  assert.equal(again.status, 200);
+  const freshBearer = again.json.data.token;
+  const getPage = async page => {
+    const response = await op.app.request('/operator/v1/workspace/cases?'
+      + 'q=CS-SYN-PAGE&status=pending&page=' + page, {
+      headers: { Authorization: 'Bearer ' + freshBearer, Origin: origin } });
+    assert.equal(response.status, 200);
+    return (await response.json()).data;
+  };
+  const pageOne = await getPage(1), pageTwo = await getPage(2);
+  assert.equal(pageOne.items.length, 20);
+  assert.equal(pageOne.hasMore, true);
+  assert.equal(pageTwo.items.length, 3);
+  assert.equal(pageTwo.hasMore, false);
+  assert.equal(new Set([...pageOne.items,...pageTwo.items].map(x => x.id)).size, 23);
 });
 
 
