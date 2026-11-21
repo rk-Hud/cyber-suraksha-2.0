@@ -218,6 +218,38 @@ test('staging owner provisioning requires approved Google subject, private key a
   assert.equal(userRows[0].case_count, 1);
   assert.equal(userRows[0].case_references[0], aCase.json.data.case.reference);
   assert.ok(!('password_hash' in userRows[0]) && !('totp_secret' in userRows[0]));
+  assert.ok(Number.isSafeInteger(userRows[0].version));
+  const ownerChangeUser = async (id, payload, token = bearer.json.data.token) =>
+    op.app.request('/operator/v1/workspace/users/' + id, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token, Origin: origin },
+      body: JSON.stringify(payload),
+    });
+  const citizenId = a.user.id, currentVersion = userRows[0].version;
+  const bannedChange = await ownerChangeUser(citizenId, { active: false, version: currentVersion }, b.token);
+  assert.equal(bannedChange.status, 401, 'citizen bearer cannot change account status');
+  const ownerId = (await api.pool.query(
+    "SELECT id FROM portal_users WHERE role='owner'")).rows[0].id;
+  assert.equal((await ownerChangeUser(ownerId, { active: false, version: 1 })).status, 403);
+  assert.equal((await ownerChangeUser(citizenId, { active: false, version: 999 })).status, 409);
+  const disabled = await ownerChangeUser(citizenId, { active: false, version: currentVersion });
+  assert.equal(disabled.status, 200);
+  assert.equal((await disabled.json()).data.user.changed, true);
+  assert.equal((await api.request('/cases', { token: a.token })).status, 401);
+  const preserved = await api.pool.query('SELECT count(*)::int AS n FROM portal_sessions WHERE user_id=$1',
+    [citizenId]);
+  assert.ok(preserved.rows[0].n > 0, 'session history is preserved');
+  const restored = await ownerChangeUser(citizenId, { active: true, version: currentVersion + 1 });
+  assert.equal(restored.status, 200);
+  assert.equal((await api.request('/cases', { token: a.token })).status, 401,
+    're-enabling a citizen must not revive an old session');
+  assert.equal((await api.pool.query('SELECT active FROM portal_users WHERE id=$1',
+    [citizenId])).rows[0].active, true);
+  assert.equal((await ownerChangeUser(citizenId, { active: true, version: currentVersion + 2 })).status, 200);
+  // Trimmed control characters must not bypass server input validation.
+  assert.equal((await op.app.request('/operator/v1/workspace/users?q=%0A', {
+    headers: { Authorization: 'Bearer ' + bearer.json.data.token, Origin: origin },
+  })).status, 400);
   for (const bad of ['/workspace/users?page=0', '/workspace/users?page=-3',
     '/workspace/events?type=other', '/workspace/sessions?page=9999',
     '/workspace/cases?status=bogus', '/workspace/cases?page=1000',
@@ -248,6 +280,15 @@ test('staging owner provisioning requires approved Google subject, private key a
   assert.equal(listed.length, 2);
   const adminRow = listed.find(x => x.id === aCase.json.data.case.id);
   assert.ok(adminRow);
+  // Anonymous requests cannot exhaust the operator-only case-change budget.
+  for (let i = 0; i < 31; i++) {
+    const anonymous = await op.app.request('/operator/v1/cases/' + adminRow.id, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json', Origin: origin },
+      body: JSON.stringify({ status: 'in_review', version: adminRow.version,
+        message: 'Unauthorized synthetic request' }),
+    });
+    assert.equal(anonymous.status, 401);
+  }
   const update = await op.app.request('/operator/v1/cases/' + adminRow.id, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + bearer.json.data.token,
@@ -317,6 +358,7 @@ test('staging owner provisioning requires approved Google subject, private key a
     "SELECT action FROM portal_audit_events WHERE action LIKE 'staging.owner.%' ORDER BY created_at")).rows;
   assert.deepEqual(audits.map(x => x.action).sort(),
     ['staging.owner.mfa_login', 'staging.owner.provisioned', 'staging.owner.case_updated',
+      'staging.owner.citizen_disabled', 'staging.owner.citizen_enabled',
       'staging.owner.logout'].sort());
 
 
