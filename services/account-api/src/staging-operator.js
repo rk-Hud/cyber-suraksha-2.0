@@ -498,10 +498,18 @@ export function createStagingOperator(options = {}) {
 
   app.get('/operator/v1/cases', async c => {
     await operatorAuth(c);
-    const cases = (await pool.query(
-      'SELECT id,reference,subject,category,status,version,created_at,updated_at '
-      + 'FROM portal_complaints ORDER BY updated_at DESC LIMIT 50')).rows;
-    return safe(c, { cases });
+    const page=paging(c),params=[],conditions=[];
+    const status=(c.req.query('status')||'').trim();
+    if(status && !Object.prototype.hasOwnProperty.call(transitions,status)) reject('operator_invalid',400);
+    if(status){params.push(status);conditions.push('p.status=$'+params.length);}
+    if(page.term){params.push('%'+page.term.toLowerCase().replace(/[\\%_]/g,'\\$&')+'%');
+      conditions.push("(LOWER(p.subject) LIKE $"+params.length+" ESCAPE '\\' OR LOWER(p.reference) LIKE $"+params.length+" ESCAPE '\\')");}
+    const where=conditions.length?' WHERE '+conditions.join(' AND '):'';
+    const result=await paged('SELECT count(*)::int AS total FROM portal_complaints p'+where,
+      'SELECT p.id,p.reference,p.subject,p.category,p.status,p.version,p.created_at,p.updated_at '
+      +'FROM portal_complaints p'+where+' ORDER BY p.updated_at DESC,p.id DESC LIMIT $'+(params.length+1)
+      +' OFFSET $'+(params.length+2),params,page);
+    return safe(c,{cases:result.records,total:result.total,page:result.page,pageSize:result.pageSize});
   });
   app.get('/operator/v1/cases/:id', async c => {
     await operatorAuth(c);
