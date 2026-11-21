@@ -194,6 +194,38 @@ test('staging owner provisioning requires approved Google subject, private key a
   const citizenSummary = await op.app.request('/operator/v1/summary', {
     headers: { Authorization: 'Bearer ' + a.token, Origin: origin } });
   assert.equal(citizenSummary.status, 401);
+
+  // Owner-only visibility: no citizen bearer may access any directory or audit route.
+  const ownerHeader={Authorization:'Bearer '+bearer.json.data.token,Origin:origin};
+  for(const endpoint of ['users','activity','sessions','audit']){
+    const authorized=await op.app.request('/operator/v1/'+endpoint,{headers:ownerHeader});
+    assert.equal(authorized.status,200,endpoint+' requires the verified operator bearer');
+    const decoded=(await authorized.json()).data;
+    assert.equal(decoded.page,1);
+    assert.equal(decoded.pageSize,20);
+    assert.ok(Number.isSafeInteger(decoded.total));
+    const refused=await op.app.request('/operator/v1/'+endpoint,{
+      headers:{Authorization:'Bearer '+a.token,Origin:origin}});
+    assert.equal(refused.status,401,endpoint+' must reject citizen tokens');
+  }
+  const users=await op.app.request('/operator/v1/users?page=1&q=citizen-a%40example.test',{headers:ownerHeader});
+  assert.equal(users.status,200);
+  const ownerUsers=(await users.json()).data.users;
+  assert.equal(ownerUsers.length,1);
+  assert.equal(ownerUsers[0].email,'citizen-a@example.test');
+  assert.equal(ownerUsers[0].case_count,1);
+  const unsafeSearch=await op.app.request('/operator/v1/users?page=0',{headers:ownerHeader});
+  assert.equal(unsafeSearch.status,400);
+  const activity=await op.app.request('/operator/v1/activity',{headers:ownerHeader});
+  assert.equal(activity.status,200);
+  assert.ok((await activity.json()).data.events.some(x=>x.reason==='staging_google_password_totp'));
+  const sessionView=await op.app.request('/operator/v1/sessions',{headers:ownerHeader});
+  assert.equal(sessionView.status,200);
+  assert.ok((await sessionView.json()).data.sessions.some(x=>x.session_kind==='administrator'&&x.state==='active'));
+  const allCases=await op.app.request('/operator/v1/cases?page=1&status=pending',{headers:ownerHeader});
+  assert.equal(allCases.status,200);
+  assert.equal((await allCases.json()).data.cases.length,2);
+
   const operatorCases = await op.app.request('/operator/v1/cases', {
     headers: { Authorization: 'Bearer ' + bearer.json.data.token, Origin: origin } });
   assert.equal(operatorCases.status, 200);
@@ -232,6 +264,9 @@ test('staging owner provisioning requires approved Google subject, private key a
   const revoked = await op.app.request('/operator/v1/summary', {
     headers: { Authorization: 'Bearer ' + bearer.json.data.token, Origin: origin } });
   assert.equal(revoked.status, 401);
+  const logoutEvents=(await api.pool.query(
+    "SELECT reason FROM portal_login_events WHERE reason='staging_operator_explicit_logout'")).rows;
+  assert.equal(logoutEvents.length,1);
   assert.equal((await api.request('/admin/summary', { token: b.token })).status, 403);
   assert.equal((await api.request('/cases/' + aCase.json.data.case.id, { token: b.token })).status, 404);
   const after = (await api.pool.query('SELECT reference,user_id,status FROM portal_complaints ORDER BY reference')).rows;
@@ -244,7 +279,7 @@ test('staging owner provisioning requires approved Google subject, private key a
   const audits = (await api.pool.query(
     "SELECT action FROM portal_audit_events WHERE action LIKE 'staging.owner.%' ORDER BY created_at")).rows;
   assert.deepEqual(audits.map(x => x.action).sort(),
-    ['staging.owner.mfa_login', 'staging.owner.provisioned', 'staging.owner.case_updated'].sort());
+    ['staging.owner.mfa_login', 'staging.owner.provisioned', 'staging.owner.case_updated', 'staging.owner.logout'].sort());
 });
 
 
