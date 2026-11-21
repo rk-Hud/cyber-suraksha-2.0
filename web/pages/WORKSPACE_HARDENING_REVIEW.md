@@ -13,6 +13,21 @@ This review branch builds on `feature/unified-workspace-audit-20261121` (Draft P
 - Preserve independent `csgooglestage` citizen and `csownerstage` administrator Functions and their separate signing/verification keys.
 - Reuse `portal_users`, `portal_sessions`, `cs_stage_operator_sessions`, `portal_login_events`, `portal_audit_events`, `portal_complaints`, and `portal_case_events`. **No SQL migration is required for these changes.**
 
+## Consolidated account management and pull-request stack
+
+- PR #12 now targets `main` (the predecessor owner provisioning PR #10 was merged).
+- PR #15 remains a **Draft stacked onto #12**. PR #13, a competing source implementation, was closed as a duplicate; its branch/commits are retained. No code was merged.
+- `PATCH /operator/v1/workspace/users/:id` is owner-only with fresh MFA, role restriction to fictional citizens, optimistic version checks, row locking, a bounded privileged write rate and transactional audit records for enabling/disabling. It never modifies an owner account.
+- Disabling a citizen expires its existing sessions and pending challenges **without deleting history**, so re-enabling does not resurrect the prior bearer. The browser prompts for explicit confirmation before each change.
+- Case updates now authenticate the owner *before* consuming the privileged case-write rate budget, preventing anonymous or citizen-bearer requests from exhausting it.
+- Browser and API logic remain **unreleased source only**; these features do not affect the existing staging site or any real account unless an independently approved future release is deployed and a user intentionally operates it.
+
+## Source-build browser previews
+
+A GitHub Actions workflow captures **12 true source-rendered screenshots** (the staging build, EN/HI/TE, 1366×768 and 390×844, citizen and owner sign-in) using disposable Chromium. A loopback-only interceptor refuses all Google and Neon network calls; screenshots reveal **no account data** and cannot verify actual MFA. Download the `cyber-suraksha-staging-source-previews` artifact from a successful `Account service and Pages checks` workflow run on PR #15. This evidence is stronger than illustrative mockups but is **not** a deployment or authenticated owner-dashboard screenshot.
+
+Detailed review: `web/pages/WORKSPACE_SECURITY_REVIEW_20261121.md`.
+
 ## Tests and evidence
 
 The added backend integration tests use **disposable loopback PostgreSQL**, never the Neon staging connection. They cover owner-only access, cross-bearer denial, bounded status/search parameters, case pagination over 23 fictional fixtures, SQL-injection-style text and revoked sessions. Existing tests already cover Google/TOTP, fake credential replay, isolation, case optimistic concurrency and owner logout. Additional static build tests check the tri-lingual case controls, account ID display, clear logout semantics and responsive table behavior.
