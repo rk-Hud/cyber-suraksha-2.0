@@ -94,9 +94,10 @@ after separately approved staging publication.
 
 ## Staging release safety gates (DO NOT RUN WITHOUT APPROVAL)
 
-1. Verify the encrypted staging `pg_dump` can be restored into an
-   **isolated** database. The earlier DPAPI backup listing passed, but its
-   restore rehearsal has **not** passed.
+1. Verify the **fresh, unencrypted** Nov 21 staging `pg_dump` can be restored
+   into an **isolated** database. Its archive/table listing passed, but its
+   corrected full restore and integrity results have **not been independently verified**.
+   Keep the backup restricted locally and out of public source.
 2. Obtain independent security review of this PR and predecessor PR #10,
    especially role isolation, CORS, CSRF, Google ID-token nonce, TOTP,
    audit logging and session expiration.
@@ -140,7 +141,7 @@ without deployment by GitHub Actions on the latest reviewed PR #15 commit:
 
 A future authorized staging release requires a verified immutable snapshot
 of the current `csgooglestage` and `csownerstage` Function versions,
-a successful local encrypted/restricted backup restore of current staging,
+a successful local **restricted and isolated** restore of current staging's private archive,
 independent Google/TOTP and privacy review, and **separate explicit owner
 approval** for each Function deployment and staging Pages publication.
 Never alter the production Neon branch or `gh-pages` public site root.
