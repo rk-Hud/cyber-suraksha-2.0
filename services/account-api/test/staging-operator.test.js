@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createHmac } from 'node:crypto';
+import { digest } from '../src/crypto.js';
 import { configuration } from '../src/config.js';
 import { createStagingOperator } from '../src/staging-operator.js';
 import { fixture, signup } from './helper.js';
@@ -126,6 +127,13 @@ test('staging owner provisioning requires approved Google subject, private key a
   assert.equal(linkedAttempt.status, 403);
 
   const op = createStagingOperator({ env: env(), config: configuration(env()), pool: api.pool, googleVerifier });
+  // Assert directly against the existing rate-bucket table.
+  const rateUse = async scope => {
+    const key = digest(env().STAGING_OPERATOR_OTP_KEY, 'operator:rate', scope);
+    const result = await api.pool.query(
+      'SELECT COALESCE(SUM(count),0)::int AS attempts FROM portal_rate_buckets WHERE key=$1', [key]);
+    return result.rows[0].attempts;
+  };
 
   // Public or cross-origin requests never bootstrap an owner.
   assert.equal((await request(op, '/challenge', {}, 'https://evil.example')).status, 403);
@@ -139,6 +147,16 @@ test('staging owner provisioning requires approved Google subject, private key a
     password: ownerPassword, confirmPassword: ownerPassword });
   assert.equal(forbidden.status, 401);
   assert.equal((await api.pool.query("SELECT count(*)::int AS n FROM portal_users WHERE role='owner'")).rows[0].n, 0);
+
+  // Bad public bootstrap attempts must not spend the private owner's budget.
+  for (let i = 0; i < 14; i++) {
+    const denial = await challenge(op);
+    const rejected = await request(op, '/begin', {
+      ...credentials(denial), approvalKey: 'wrong-approval',
+      password: ownerPassword, confirmPassword: ownerPassword });
+    assert.equal(rejected.status, 401);
+  }
+  assert.equal(await rateUse('begin'), 0);
 
   proof = await challenge(op);
   const enrolled = await request(op, '/begin', {
@@ -178,6 +196,15 @@ test('staging owner provisioning requires approved Google subject, private key a
   assert.equal((await request(op, '/begin', {
     ...credentials(next), approvalKey,
     password: ownerPassword, confirmPassword: ownerPassword })).status, 409);
+
+  // Forged Google assertions cannot consume the owner's 8-attempt login budget.
+  for (let i = 0; i < 12; i++) {
+    const denial = await challenge(op);
+    const rejected = await request(op, '/login', {
+      ...credentials(denial, 'forged'), password: ownerPassword, code: '000000' });
+    assert.equal(rejected.status, 401);
+  }
+  assert.equal(await rateUse('login'), 0, 'unverified Google proofs cannot lock owner out');
 
   // Enrollment consumes the first counter. A later valid code is required.
   proof = await challenge(op);
