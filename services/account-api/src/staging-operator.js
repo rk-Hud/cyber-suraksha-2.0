@@ -450,9 +450,10 @@ export function createStagingOperator(options = {}) {
   app.get('/operator/v1/workspace/cases', async c => {
     await operatorAuth(c);
     const page = workspacePage(c);
-    const term = (c.req.query('q') || '').trim();
+    const rawTerm = c.req.query('q') || '';
+    const term = rawTerm.trim();
     const status = c.req.query('status') || 'all';
-    if (term.length > 80 || /[\x00-\x1f\x7f]/.test(term)
+    if (rawTerm.length > 80 || /[\x00-\x1f\x7f]/.test(rawTerm)
       || !['all', 'pending', 'in_review', 'awaiting_info', 'resolved', 'closed'].includes(status))
       reject('operator_invalid', 400);
     const rows = (await pool.query(
