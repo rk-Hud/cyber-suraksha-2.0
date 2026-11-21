@@ -63,3 +63,17 @@ jobs:
           test -s /tmp/cs-operator-pages-ci/en/operator.html
           test -s /tmp/cs-operator-pages-ci/static/js/operator.js
           python -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Capture real staging source UI in isolated Chromium (no API traffic)
+        run: |
+          python -m pip install 'playwright>=1.52,<2'
+          python -m playwright install --with-deps chromium
+          python web/pages/scripts/capture_workspace_previews.py \
+            --source /tmp/cs-operator-pages-ci \
+            --output /tmp/cs-workspace-source-previews
+      - name: Upload offline source screenshot evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: cyber-suraksha-staging-source-previews
+          path: /tmp/cs-workspace-source-previews/
+          if-no-files-found: error
+          retention-days: 14
