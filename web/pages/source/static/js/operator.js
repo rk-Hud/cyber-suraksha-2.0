@@ -25,7 +25,10 @@
     const headers = { ...(payload === undefined ? {} : { 'Content-Type': 'application/json' }),
       ...(bearer ? { Authorization: 'Bearer ' + bearer } : {}) };
     const response = await fetch(base + '/operator/v1/' + path, {
-      method: payload === undefined ? 'GET' : path.startsWith('cases/') && payload.status ? 'PATCH' : 'POST',
+      method: payload === undefined ? 'GET'
+        : ((path.startsWith('cases/') && payload.status)
+          || (path.startsWith('workspace/users/') && typeof payload.active === 'boolean'))
+          ? 'PATCH' : 'POST',
       headers, cache: 'no-store', credentials: 'omit', redirect: 'error',
       ...(payload === undefined ? {} : { body: JSON.stringify(payload) }),
     });
@@ -183,24 +186,35 @@
         'Last login','Last failed login','Last logout','Method','Current sessions','Cases / latest status / references','Account'],
       activity: ['Time (IST)','Email (claimed if failed)','Event','Result','Detail'],
       sessions: ['Account','Service','Started (IST)','Expires (IST)','State'],
-      audits: ['Time (IST)','Actor','Action','Record'], details: 'Show all case references' },
+      audits: ['Time (IST)','Actor','Action','Record'], details: 'Show all case references',
+      enable: 'Enable', disable: 'Disable',
+      confirmEnable: 'Enable this fictional citizen account?',
+      confirmDisable: 'Disable this fictional citizen account and expire its sessions?' },
     hi: { none: 'कोई रिकॉर्ड नहीं', previous: 'पिछला', next: 'अगला', page: 'पृष्ठ',
       loadError: 'मालिक कार्यक्षेत्र अनुरोध अस्वीकृत', fields: ['खाता आईडी','नाम','ईमेल','भूमिका','पंजीकरण',
         'अंतिम लॉगिन','अंतिम विफल लॉगिन','अंतिम लॉगआउट','विधि','वर्तमान सत्र','मामले / स्थिति / संदर्भ','खाता'],
       activity: ['समय (IST)','ईमेल (विफल होने पर दावा)','घटना','परिणाम','विवरण'],
       sessions: ['खाता','सेवा','आरंभ (IST)','समाप्ति (IST)','स्थिति'],
-      audits: ['समय (IST)','कर्ता','क्रिया','रिकॉर्ड'], details: 'सभी मामले संदर्भ देखें' },
+      audits: ['समय (IST)','कर्ता','क्रिया','रिकॉर्ड'], details: 'सभी मामले संदर्भ देखें',
+      enable: 'सक्रिय करें', disable: 'निष्क्रिय करें',
+      confirmEnable: 'इस परीक्षण नागरिक खाते को सक्रिय करें?',
+      confirmDisable: 'इस परीक्षण नागरिक खाते को निष्क्रिय करके सत्र समाप्त करें?' },
     te: { none: 'రికార్డులు లేవు', previous: 'మునుపటి', next: 'తర్వాత', page: 'పేజీ',
       loadError: 'యజమాని వర్క్‌స్పేస్ అభ్యర్థన తిరస్కరించబడింది', fields: ['ఖాతా ఐడీ','పేరు','ఇమెయిల్','పాత్ర','నమోదు',
         'చివరి లాగిన్','చివరి విఫల లాగిన్','చివరి లాగౌట్','పద్ధతి','ప్రస్తుత సెషన్‌లు','కేసులు / స్థితి / సూచనలు','ఖాతా'],
       activity: ['సమయం (IST)','ఇమెయిల్ (విఫలమైతే ప్రకటించినది)','ఈవెంట్','ఫలితం','వివరం'],
       sessions: ['ఖాతా','సేవ','ప్రారంభం (IST)','ముగింపు (IST)','స్థితి'],
-      audits: ['సమయం (IST)','చేసినవారు','చర్య','రికార్డు'], details: 'అన్ని కేసు సూచనలు చూడండి' },
+      audits: ['సమయం (IST)','చేసినవారు','చర్య','రికార్డు'], details: 'అన్ని కేసు సూచనలు చూడండి',
+      enable: 'ప్రారంభించు', disable: 'నిలిపివేయి',
+      confirmEnable: 'ఈ కల్పిత పౌరుని ఖాతాను ప్రారంభించాలా?',
+      confirmDisable: 'ఈ కల్పిత పౌరుని ఖాతాను నిలిపి సెషన్‌లను ముగించాలా?' },
   }[lang] || null;
   const label = words || {
     none: 'No records', previous: 'Previous', next: 'Next', page: 'Page',
     loadError: 'Owner workspace denied', fields: [], activity: [], sessions: [], audits: [],
-    details: 'Show case references',
+    details: 'Show case references', enable: 'Enable', disable: 'Disable',
+    confirmEnable: 'Enable this fictional citizen account?',
+    confirmDisable: 'Disable this fictional citizen account and expire its sessions?',
   };
   function dateIST(value) {
     const seconds = Number(value);
@@ -309,11 +323,35 @@
             void loadUserCaseRefs(user, region).catch(error => message(label.loadError + ': ' + error.message));
           });
           holder.append(details);
+          const state = element('div');
+          state.append(element('span', user.active ? 'active' : 'disabled'));
+          if (user.role === 'citizen') {
+            const toggle = element('button', user.active ? label.disable : label.enable, 'plain-button');
+            toggle.type = 'button';
+            toggle.setAttribute('aria-label', (user.active ? label.disable : label.enable)
+              + ' ' + user.email);
+            toggle.addEventListener('click', async () => {
+              if (!window.confirm(user.active ? label.confirmDisable : label.confirmEnable)) return;
+              toggle.disabled = true;
+              try {
+                const changed = await call('workspace/users/' + encodeURIComponent(user.id),
+                  { active: !user.active, version: user.version }, session.bearer);
+                message(changed.user.changed
+                  ? 'Citizen account status updated and audit event recorded.'
+                  : 'Citizen account status already matches the request.');
+                await loadOwnerPane('users');
+              } catch (error) {
+                message(label.loadError + ': ' + error.message);
+                toggle.disabled = false;
+              }
+            });
+            state.append(toggle);
+          }
           return [user.id, user.name, user.email, user.role, dateIST(user.created_at),
             dateIST(user.last_login_at), dateIST(user.last_failed_login_at),
             dateIST(user.last_logout_at), user.authentication_method,
             Number(user.citizen_active_sessions) + Number(user.operator_active_sessions),
-            holder, user.active ? 'active' : 'disabled'];
+            holder, state];
         }) || paginate('users', data, () => loadOwnerPane('users'));
       }
       if (name === 'events') {
