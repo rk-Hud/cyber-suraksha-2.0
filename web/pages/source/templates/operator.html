@@ -99,11 +99,11 @@
         <label for="operator-case-status">{{ t('unified_dash_filter') }}</label>
         <select id="operator-case-status" name="status">
           <option value="all">{{ t('unified_dash_filter_all') }}</option>
-          <option value="pending">pending</option>
-          <option value="in_review">in_review</option>
-          <option value="awaiting_info">awaiting_info</option>
-          <option value="resolved">resolved</option>
-          <option value="closed">closed</option>
+          <option value="pending">{{ t('status_pending') }}</option>
+          <option value="in_review">{{ t('status_in_review') }}</option>
+          <option value="awaiting_info">{{ t('status_awaiting_info') }}</option>
+          <option value="resolved">{{ t('status_resolved') }}</option>
+          <option value="closed">{{ t('status_closed') }}</option>
         </select>
         <button type="submit" class="button button-dark">{{ t('unified_dash_search') }}</button>
       </form>
