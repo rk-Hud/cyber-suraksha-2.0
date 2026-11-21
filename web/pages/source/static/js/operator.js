@@ -195,11 +195,12 @@
     const result=await call(operatorQuery(view),undefined,session.bearer);
     if (view==='users') renderTable(view,
       ['Account ID','Name','Verified email','Role','Registered (IST)','Last login (IST)',
-       'Last failed (IST)','Last logout (IST)','Sessions','Cases','Latest case','Status'],
+       'Last failed (IST)','Last logout (IST)','Sessions','Cases','Case references','Latest case','Status'],
       result.users||[],u=>[u.id,u.name,u.email,u.role,shortTime(u.created_at),
         shortTime(u.last_login_at),shortTime(u.last_failed_at),shortTime(u.last_logout_at),
         Number(u.citizen_active_sessions||0)+Number(u.operator_active_sessions||0),
-        u.case_count,u.latest_case_status,u.active?'Active':'Disabled']);
+        u.case_count,Array.isArray(u.case_references)?u.case_references.join(', '):'—',
+        u.latest_case_status,u.active?'Active':'Disabled']);
     if(view==='activity') renderTable(view,
       ['Time (IST)','Email','Name','Event','Result'],
       result.events||[],v=>[shortTime(v.created_at),v.email,v.name,
