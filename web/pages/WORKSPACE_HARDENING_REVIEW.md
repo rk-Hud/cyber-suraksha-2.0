@@ -146,7 +146,7 @@ The predecessor file `web/pages/UNIFIED_WORKSPACE_REVIEW.md` documents the propo
 
 ## Safe rollback strategy — only if a later deployment is explicitly approved
 
-- **Before deployment:** record current Function deployment version, known-good source SHA and `gh-pages` commit SHA in a private change record. Keep the prior operator bundle available for exact redeployment; do not assume a Neon Function has automatic one-click version rollback.
+- **Before deployment:** record the current deployed version and source SHA of **both** `csgooglestage` and `csownerstage`, plus the `gh-pages` staging commit SHA in a private change record. Keep both prior bundles available for exact redeployment; do not assume Neon Functions have automatic one-click rollback.
 - **GitHub Pages:** revert only the approved staging publication commit, never force-push, reset `main`, or delete data:
   
   ```powershell
@@ -163,7 +163,7 @@ The predecessor file `web/pages/UNIFIED_WORKSPACE_REVIEW.md` documents the propo
   # Only with fresh rollback approval: git revert --no-edit $sha
   # Review git show --stat HEAD, then only with approval: git push origin gh-pages
   ```
-- **Operator Function:** rebuild the *previous verified operator source* and redeploy only to `br-sweet-band-azhwai4r / csownerstage` after explicit rollback approval. Do not deploy the citizen bundle, replace private keys or point at the production branch.
+- **Staging Functions:** rebuild and redeploy the *exact previous deployed citizen and/or operator bundle* only to the existing `br-sweet-band-azhwai4r` branch after explicit rollback approval. Check both Function versions; never replace private keys, reset the database branch or target production.
 - **Database:** this branch has no schema or data writes, so there is no database migration rollback. If a separate future change adds migrations, it requires its own verified backup/restore and rollback plan.
 
 No production readiness, government affiliation or public police complaint authority is implied by this development review.
