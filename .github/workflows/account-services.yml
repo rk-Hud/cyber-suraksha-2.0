@@ -63,6 +63,32 @@ jobs:
           test -s /tmp/cs-operator-pages-ci/en/operator.html
           test -s /tmp/cs-operator-pages-ci/static/js/operator.js
           python -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Package the reviewed staging website (not deployed)
+        run: |
+          test -s /tmp/cs-operator-pages-ci/en/account.html
+          test -s /tmp/cs-operator-pages-ci/en/operator.html
+          test -s /tmp/cs-operator-pages-ci/hi/account.html
+          test -s /tmp/cs-operator-pages-ci/te/account.html
+          cat > /tmp/cs-operator-pages-ci/REVIEW_ONLY.txt <<'EOF'
+          CYBER SURAKSHA 2.0 — SOURCE-ONLY WEBSITE HANDOFF
+          This artifact is the independently operated staging citizen and administrator website.
+          It is NOT an official government/police reporting portal.
+          It is NOT deployed and must accept fictional data only.
+          Never publish until the locally restored backup and authorized Google/TOTP sign-ins
+          are verified, independent privacy/security review completed and release approved.
+          EOF
+          printf 'Source commit: %s\n' "$GITHUB_SHA" >> /tmp/cs-operator-pages-ci/REVIEW_ONLY.txt
+          ( cd /tmp/cs-operator-pages-ci &&
+            find . -type f ! -name 'SHA256SUMS.txt' -print0 |
+            sort -z | xargs -0 sha256sum > SHA256SUMS.txt )
+      - name: Upload reviewed website files for manual handoff (no publish)
+        uses: actions/upload-artifact@v4
+        with:
+          name: cyber-suraksha-staging-website-review-build
+          path: /tmp/cs-operator-pages-ci/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
       - name: Capture real staging source UI in isolated Chromium (no API traffic)
         run: |
           python -m pip install 'playwright>=1.52,<2'
