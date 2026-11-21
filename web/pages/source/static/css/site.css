@@ -629,3 +629,15 @@ table { width: 100%; border-collapse: collapse; text-align: left; }
 
 .test-workspace-note { background: #fff4db; border-bottom: 1px solid #a77626; color: #513b18; padding: .85rem 0; }
 .test-workspace-note p { margin: .3rem 0 0; font-size: .9rem; }
+
+/* Unified citizen/owner staging workspace: unobtrusive safety boundary. */
+.test-workspace-note-compact { padding: 6px 0; font-size: .75rem; line-height: 1.5; }
+.test-workspace-note-compact .shell { text-align: center; }
+.owner-entry { margin: 16px 0 30px; padding: clamp(20px,3vw,32px); border: 1px solid var(--line);
+  border-left: 4px solid var(--action); display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+.owner-entry h2 { font-size: clamp(1.25rem,2.3vw,1.6rem); }
+.owner-entry p { margin-bottom: .5em; max-width: 70ch; }
+.owner-entry .eyebrow { margin-bottom: 8px; }
+.owner-entry .button { flex-shrink: 0; white-space: nowrap; }
+@media(max-width: 700px) { .owner-entry { flex-direction: column; align-items: stretch; }
+  .owner-entry .button { text-align: center; white-space: normal; } }
