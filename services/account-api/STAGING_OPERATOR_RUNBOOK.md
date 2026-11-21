@@ -30,8 +30,8 @@ every private prerequisite is provided:
   and a verified one-time TOTP code before any owner row can be inserted.
 * Global database-backed request limits, short-lived challenges, one-use
   Google-credential fingerprints, transactional locks, five pending TOTP
-  attempts, owner-role checks, ten-minute MFA freshness on the existing
-  admin API and a one-time TOTP counter.
+  attempts, owner-role checks, ten-minute MFA freshness on the standalone
+  operator API and a one-time TOTP counter.
 * Audit events for successful provisioning and privileged MFA sign-in,
   sanitized login success/failure entries, no plaintext credentials or TOTP
   seeds in source, logs, GitHub, public URLs or normal admin responses.
@@ -50,9 +50,8 @@ edge abuse protection before real traffic.
    matching email, citizen accounts, screenshots or repository display names.
    A reviewer must verify the intended owner and approved subject through an
    authenticated account/console workflow.
-2. Verify a private, restorable staging backup/checkpoint. Staging branch has
-   previously been scheduled to expire **2026-11-25 05:16:34 UTC**; recheck
-   its current expiry before setting up an operator.
+2. Verify a private, restorable staging backup/checkpoint. Staging branch expiry must be rechecked before deployment; the latest
+   branch overview showed **Never**, but do not rely on stale screenshots.
 3. Confirm existing citizen case counts, both Google identity links, and no
    owner account (read-only SQL below). Keep real email addresses and tokens
    out of issue comments and CI logs.
@@ -105,9 +104,10 @@ to commit. Never put values in command-line arguments, CI outputs or issues.
 | STAGING_OWNER_EMAIL | Verified Google email of the authorized owner |
 | ADMIN_EMAIL | Must exactly equal STAGING_OWNER_EMAIL; match the staging citizen Function |
 | STAGING_OPERATOR_APPROVAL_KEY | Fresh independently generated 48+ character high-entropy staging-only credential |
-| TOTP_ENCRYPTION_KEY | Fresh random staging-only encryption key (48+ characters), never a production key |
-| API_SESSION_KEY | The **existing staging citizen Function's** private session key so its admin endpoints can authenticate the operator session; never the production key |
-| API_OTP_KEY | Staging-only existing OTP HMAC key, kept distinct from other keys |
+| STAGING_OPERATOR_TOTP_KEY | Fresh random 48+ character operator-only encryption key; never the citizen or production key |
+| STAGING_OPERATOR_SESSION_KEY | Fresh random 48+ character operator-only bearer signing key; never the citizen or production key |
+| STAGING_OPERATOR_OTP_KEY | Fresh random 48+ character operator-only nonce/rate HMAC key, distinct from all other keys |
+| API_SESSION_KEY, API_OTP_KEY, TOTP_ENCRYPTION_KEY | **Never share citizen keys with the operator**; these are not needed by the operator Function |
 | GOOGLE_CLIENT_ID | Existing approved Google OAuth Web Client ID for the owner |
 | ALLOWED_ORIGINS | https://rk-hud.github.io |
 | PUBLIC_WEB_URL | https://rk-hud.github.io/cyber-suraksha-2.0/ |
@@ -117,16 +117,15 @@ to commit. Never put values in command-line arguments, CI outputs or issues.
 Generate a staging-only TOTP encryption key and operator approval key using
 a cryptographically secure generator or password manager, in the owner's
 private authenticated environment. Do not generate them in a chat or
-commit or screenshot their values. The owner must enter the TOTP key into
-**both** staging Function environments after independent approval, so
-/api/v1/admin/mfa/verify can decrypt the new owner's factor. Never replace
-an encryption key for an existing owner. Config changes can restart a
+commit or screenshot their values. The operator TOTP key must exist only in the operator Function environment.
+Do not reuse or export any key from the citizen Function. Never replace the
+operator encryption key once an owner authenticator has been enrolled. Config changes can restart a
 Function; schedule and verify before applying them.
 
 Staging-only schema file:
 sql/003-staging-operator-only.sql. This additive DDL is deliberately
-**not** part of npm run db:init or production migrations. It creates three
-new staging-prefixed tables, no users and no case updates. Execute only on
+**not** part of npm run db:init or production migrations. It creates four
+new staging-prefixed tables including isolated sessions, no users and no case updates. Execute only on
 the reviewed staging database after backup, tests and separate authorization.
 
 ## Owner enrollment and login protocol (future approved deployment)
@@ -155,12 +154,18 @@ there is no live operator URL at the time of this PR.
    a **new** authenticator code. On success, receive a session bearer valid
    for at most 30 minutes and recent MFA for ten minutes. Enrollment consumes
    its code, so the next login requires a later 30-second TOTP time step.
-5. **Admin APIs:** Supply the bearer as an Authorization: Bearer header to
-   existing staging csgooglestage /api/v1/admin/summary,
-   /api/v1/admin/cases and protected updates. The bearer is ephemeral,
-   must not go in URLs, screenshots, storage, logs, analytics or third-party
-   tools. Log out with existing /api/v1/auth/logout. Repeat protected
-   /login for renewed MFA after ten minutes.
+5. **Admin APIs:** Supply the operator bearer as an Authorization: Bearer header
+   only to the separately deployed operator Function:
+   GET /operator/v1/summary, GET /operator/v1/cases, GET /operator/v1/cases/:id,
+   PATCH /operator/v1/cases/:id (status, message and optimistic version),
+   and POST /operator/v1/logout with {}. These routes revalidate server-side
+   owner role, identity, active flag, account version, session revocation and
+   ten-minute MFA freshness. Citizen bearer tokens are rejected, and operator
+   tokens never work on csgooglestage. Fictional status changes are recorded in
+   portal_case_events and portal_audit_events; the operator Function does not
+   dispatch citizen notifications. Keep bearer tokens ephemeral and out of
+   URLs, screenshots, storage, logs and analytics. A fresh /login is required
+   once the ten-minute MFA freshness period expires.
 6. Deny citizen access, expired and replayed Google proofs, reused TOTP,
    wrong password/key, wrong branch and stale MFA. Test status writes only
    against fictional staging cases after independently approving the owner.
@@ -181,3 +186,26 @@ production configuration. Stop without deleting or altering citizen rows.
   and both-direction case isolation, without exposing fictional details.
 * Staging branch expiry and recovery plan.
 * Separate, explicit production deployment authorization (not granted).
+
+
+## Security review addendum (2026-11-21)
+
+The original draft incorrectly reused citizen session and OTP keys and wrote
+operator bearers to portal_sessions. The revised source requires three
+operator-only keys (STAGING_OPERATOR_SESSION_KEY, STAGING_OPERATOR_OTP_KEY,
+STAGING_OPERATOR_TOTP_KEY); these must be generated and stored privately and
+must not match each other or citizen keys. Operator sessions are stored only in
+cs_stage_operator_sessions; no citizen API endpoint consumes them.
+
+**UI integration gate:** The current public account.html administrator form is
+a legacy citizen API interface and is **not** an operator Google+TOTP client.
+It must not be advertised as an activated operator login. Implement and review
+a private Google Identity Services owner enrollment/login UI before activation.
+Always show the disclaimer that this is an independently operated project, not
+a government complaint portal.
+
+**No-go remains:** full local restore rehearsal has not passed; PR is draft;
+the verified Google owner subject, independent review, runtime secrets,
+database migration authorization, separate Function deployment approval,
+live browser tests and real MFA enrollment are pending. Do not bypass these
+gates. No production or Render changes have been authorized.
