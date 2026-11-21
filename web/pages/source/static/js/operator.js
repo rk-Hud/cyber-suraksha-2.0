@@ -154,7 +154,6 @@
     } catch(error) { message('Case list denied: ' + error.message); }
   }
   credentials.addEventListener('submit', event => { event.preventDefault(); void beginChallenge(); });
-  challengeButton.addEventListener('click', () => void beginChallenge());
   modeSelect.addEventListener('change', () => {
     resetProof(); message('Choose Start Google verification to begin a new challenge.');
   });
