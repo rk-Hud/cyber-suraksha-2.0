@@ -106,7 +106,7 @@ test('staging owner provisioning requires approved Google subject, private key a
     data: { subject: 'Fictional case B', category: 'account', details: 'Synthetic test case details only', consent: true } });
   assert.equal(aCase.status, 201);
   assert.equal(bCase.status, 201);
-  const before = (await api.pool.query('SELECT reference,user_id,status FROM portal_complaints WHERE reference NOT LIKE 'CS-SYN-PAGE-%' ORDER BY reference')).rows;
+  const before = (await api.pool.query('SELECT reference,user_id,status FROM portal_complaints ORDER BY reference')).rows;
   await api.pool.query('INSERT INTO portal_google_identities(google_sub,user_id,linked_at) VALUES($1,$2,$3),($4,$5,$6)',
     ['11111111111111111111', a.user.id, 100, '22222222222222222222', b.user.id, 100]);
   // Pinning an existing citizen's Google subject is never proof of ownership.
@@ -306,7 +306,7 @@ test('staging owner provisioning requires approved Google subject, private key a
   assert.equal(revoked.status, 401);
   assert.equal((await api.request('/admin/summary', { token: b.token })).status, 403);
   assert.equal((await api.request('/cases/' + aCase.json.data.case.id, { token: b.token })).status, 404);
-  const after = (await api.pool.query('SELECT reference,user_id,status FROM portal_complaints ORDER BY reference')).rows;
+  const after = (await api.pool.query("SELECT reference,user_id,status FROM portal_complaints WHERE reference NOT LIKE 'CS-SYN-PAGE-%' ORDER BY reference")).rows;
   assert.deepEqual(after.filter(x => x.reference !== aCase.json.data.case.reference),
     before.filter(x => x.reference !== aCase.json.data.case.reference));
   assert.equal(after.find(x => x.reference === aCase.json.data.case.reference).status, 'in_review');
