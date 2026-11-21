@@ -41,13 +41,29 @@ function operatorSettings(env, config) {
     && env.STAGING_OPERATOR_APPROVAL_KEY.length >= 48
     && env.STAGING_OPERATOR_APPROVAL_KEY !== config.totpKey
     && env.STAGING_OPERATOR_APPROVAL_KEY !== config.sessionKey
-    && env.STAGING_OPERATOR_APPROVAL_KEY !== config.otpKey;
+    && env.STAGING_OPERATOR_APPROVAL_KEY !== config.otpKey
+    && config.sessionKey !== config.totpKey
+    && config.otpKey !== config.totpKey
+    && [env.API_SESSION_KEY, env.API_OTP_KEY, env.TOTP_ENCRYPTION_KEY]
+      .filter(Boolean).every(key =>
+        ![config.sessionKey, config.otpKey, config.totpKey,
+          env.STAGING_OPERATOR_APPROVAL_KEY].includes(key));
   return { enabled: Boolean(enabled), subject: env.STAGING_OWNER_GOOGLE_SUB, email: approvedEmail };
 }
 
 export function createStagingOperator(options = {}) {
   const env = options.env || process.env;
-  const config = options.config || configuration(env);
+  const baseConfig = options.config || configuration(env);
+  // Operator-only credentials are NEVER aliases of the citizen Function's keys.
+  // Avoid accepting an operator login with a citizen signature, or vice versa.
+  const config = {
+    ...baseConfig,
+    sessionKey: env.STAGING_OPERATOR_SESSION_KEY || '',
+    otpKey: env.STAGING_OPERATOR_OTP_KEY || '',
+    totpKey: env.STAGING_OPERATOR_TOTP_KEY || '',
+  };
+  config.authReady = config.sessionKey.length >= 48 && config.otpKey.length >= 48
+    && config.sessionKey !== config.otpKey;
   if (options.googleVerifier && config.nodeEnv !== 'test') throw new Error('Only tests may inject Google verification');
   const settings = operatorSettings(env, config);
   const pool = options.pool || createPool(config);
@@ -285,18 +301,111 @@ export function createStagingOperator(options = {}) {
       await db.query('UPDATE portal_users SET totp_last_step=$1 WHERE id=$2', [step, actor.id]);
       const token = newToken(), id = newId(), seconds = now();
       await db.query(
-        'INSERT INTO portal_sessions(id,token_hash,user_id,created_at,expires_at,authenticated_at,mfa_at) '
-        + 'VALUES($1,$2,$3,$4,$5,$4,$4)',
-        [id, digest(config.sessionKey, 'api-v1:session', token), actor.id, seconds, seconds + 1800]);
+        'INSERT INTO cs_stage_operator_sessions(id,token_hash,owner_id,owner_version,created_at,expires_at,mfa_at) '
+        + 'VALUES($1,$2,$3,$4,$5,$6,$5)',
+        [id, hashed('session', token), actor.id, actor.version, seconds, seconds + 1800]);
       await audit(db, actor.id, 'staging.owner.mfa_login', actor.id);
       await loginRecord(db, actor, true);
       return { token, expiresAt: seconds + 1800, mfaVerified: true };
     });
     if (!result) reject();
-    // Issued bearer works with the existing citizen staging Function's
-    // /api/v1/admin/* endpoints iff both staging Functions share the same
-    // API_SESSION_KEY and ADMIN_EMAIL. Never use a production session key.
+    // A staging operator bearer is recognized ONLY by this operator Function.
+    // No citizen API route will accept its HMAC or its independent session row.
     return safe(c, result);
   });
+
+  // Every privileged operation authenticates a dedicated, revocable operator
+  // session and checks the current server-side owner role, approved identity,
+  // account version, and fresh MFA. Citizen sessions are never consulted.
+  async function operatorAuth(c, db = pool) {
+    ready();
+    const bearer = c.req.header('Authorization') || '';
+    if (!/^Bearer [A-Za-z0-9_-]{43}$/.test(bearer)) reject('operator_unauthorized', 401);
+    const token = bearer.slice(7);
+    const result = await db.query(
+      'SELECT s.id AS session_id,s.owner_id,s.owner_version,s.mfa_at,u.email,u.role,u.active,u.version '
+      + 'FROM cs_stage_operator_sessions s JOIN portal_users u ON u.id=s.owner_id '
+      + 'WHERE s.token_hash=$1 AND s.revoked_at IS NULL AND s.expires_at>$2',
+      [hashed('session', token), now()]);
+    const row = result.rows[0];
+    if (!row || row.role !== 'owner' || row.email !== settings.email
+      || !row.active || row.owner_version !== row.version
+      || Number(row.mfa_at) + 600 < now()) reject('operator_unauthorized', 401);
+    return row;
+  }
+  const transitions = {
+    pending: ['in_review', 'closed'],
+    in_review: ['awaiting_info', 'resolved', 'closed'],
+    awaiting_info: ['in_review', 'resolved', 'closed'],
+    resolved: ['closed', 'in_review'],
+    closed: [],
+  };
+  app.get('/operator/v1/summary', async c => {
+    await operatorAuth(c);
+    const rows = (await pool.query(
+      'SELECT status,count(*)::int AS n FROM portal_complaints GROUP BY status')).rows;
+    const counts = Object.fromEntries(rows.map(x => [x.status, x.n]));
+    return safe(c, { counts, scope: 'fictional-staging-only' });
+  });
+  app.get('/operator/v1/cases', async c => {
+    await operatorAuth(c);
+    const cases = (await pool.query(
+      'SELECT id,reference,subject,category,status,version,created_at,updated_at '
+      + 'FROM portal_complaints ORDER BY updated_at DESC LIMIT 50')).rows;
+    return safe(c, { cases });
+  });
+  app.get('/operator/v1/cases/:id', async c => {
+    await operatorAuth(c);
+    if (!identifier(c.req.param('id'))) reject('operator_invalid', 400);
+    const row = (await pool.query(
+      'SELECT id,reference,subject,category,details,status,version,created_at,updated_at '
+      + 'FROM portal_complaints WHERE id=$1', [c.req.param('id')])).rows[0];
+    if (!row) reject('operator_not_found', 404);
+    const events = (await pool.query(
+      'SELECT sequence,author_role,author_name,message,old_status,new_status,created_at '
+      + 'FROM portal_case_events WHERE complaint_id=$1 ORDER BY sequence', [row.id])).rows;
+    return safe(c, { case: row, events });
+  });
+  app.patch('/operator/v1/cases/:id', async c => {
+    ready();
+    const value = await body(c, ['status', 'message', 'version']);
+    if (!identifier(c.req.param('id'))
+      || !Object.prototype.hasOwnProperty.call(transitions, value.status)
+      || !Number.isSafeInteger(value.version) || value.version < 1
+      || typeof value.message !== 'string' || value.message.length < 3
+      || value.message.length > 3000) reject('operator_invalid', 400);
+    await rate('case-update', 30, 3600);
+    const updated = await transaction(pool, async db => {
+      const actor = await operatorAuth(c, db);
+      const row = (await db.query(
+        'SELECT * FROM portal_complaints WHERE id=$1 FOR UPDATE',
+        [c.req.param('id')])).rows[0];
+      if (!row) reject('operator_not_found', 404);
+      if (row.version !== value.version) reject('operator_version_conflict', 409);
+      if (value.status !== row.status
+        && !transitions[row.status]?.includes(value.status)) reject('operator_invalid', 400);
+      const former = row.status, stamp = now(), nextVersion = row.version + 1;
+      await db.query(
+        'UPDATE portal_complaints SET status=$1,version=$2,updated_at=$3 WHERE id=$4',
+        [value.status, nextVersion, stamp, row.id]);
+      await db.query(
+        'INSERT INTO portal_case_events(id,complaint_id,actor_id,sequence,author_role,author_name,message,old_status,new_status,created_at) '
+        + "VALUES($1,$2,$3,$4,'owner',$5,$6,$7,$8,$9)",
+        [newId(), row.id, actor.owner_id, nextVersion, 'Staging Owner',
+          value.message, former, value.status, stamp]);
+      await audit(db, actor.owner_id, 'staging.owner.case_updated', row.id);
+      return { reference: row.reference, status: value.status, version: nextVersion };
+    });
+    return safe(c, { case: updated });
+  });
+  app.post('/operator/v1/logout', async c => {
+    await body(c, []);
+    const actor = await operatorAuth(c);
+    await pool.query(
+      'UPDATE cs_stage_operator_sessions SET revoked_at=$1 WHERE id=$2 AND revoked_at IS NULL',
+      [now(), actor.session_id]);
+    return safe(c, { signedOut: true });
+  });
+
   return { app, pool, settings };
 }
