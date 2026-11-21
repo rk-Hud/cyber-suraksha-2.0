@@ -73,7 +73,7 @@ class DocumentAudit(HTMLParser):
   if (tag in ('script','img') or tag=='link' and a.get('rel') in ('stylesheet','icon')) and link.startswith(('https://','http://','//')):self.remote.append(link)
  def handle_data(self,data):self.visible.append(data)
 
-def validate_page(content,language,account=False,reading=False):
+def validate_page(content,language,account=False,reading=False,test_workspace=False):
  a=DocumentAudit();a.feed(content)
  if a.lang!=language or len(a.ids)!=len(set(a.ids)) or a.remote:raise ValueError('Language, duplicate identifiers or remote asset failure')
  if not account and not reading:
@@ -83,7 +83,7 @@ def validate_page(content,language,account=False,reading=False):
  elif account:
   if 'id="account-app"' not in content or 'id="account-register"' not in content or 'id="account-new-case"' not in content:raise ValueError('Account interface missing')
  if any(f'id="{removed}"' in content for removed in ('soc','glossary','operations')):raise ValueError('Removed section returned')
- if re.search(r'\b(demo|preview|staging)\b',' '.join(a.visible),re.I):raise ValueError('Release-state wording remains')
+ if not test_workspace and re.search(r'\b(demo|preview|staging)\b',' '.join(a.visible),re.I):raise ValueError('Release-state wording remains')
  if 'Jatoth Ramakrishna' not in content:raise ValueError('Owner attribution missing')
  if 'form-action \'none\'' not in content:raise ValueError('Native form posts must fail closed')
  return a.paths
@@ -138,7 +138,7 @@ def main(argv=None):
    filename='' if name=='index.html' else name
    content=environment.get_template(template).render(**context,is_account=account,is_operator=(name=='operator.html'),page_filename=filename,legal_kind='privacy' if name=='privacy.html' else 'terms')
    content='\n'.join(line.rstrip() for line in content.splitlines())+'\n'
-   linked+=validate_page(content,lang,account,reading)
+   linked+=validate_page(content,lang,account,reading,test_workspace=test_workspace)
    (directory/name).write_text(content)
    if lang=='en' and name=='index.html':(OUTPUT/'index.html').write_text(content)
  for link in linked:

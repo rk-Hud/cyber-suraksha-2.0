@@ -443,6 +443,7 @@ export function createApi(options = {}) {
       if (user?.active && !await googleOnly(db, user.id)) {
         await db.query('UPDATE portal_users SET password_hash=$1, updated_at=$2, version=version+1 WHERE id=$3', [chosen, now(), user.id]);
         await revoke(db, user.id);
+        await audit(db, user, 'auth.password_reset', user.id);
       }
       await eraseSession(db, challenge.browser_id);
       return { reset: true };
@@ -455,7 +456,11 @@ export function createApi(options = {}) {
   });
   app.post('/api/v1/auth/logout', async c => {
     await body(c, []);
-    await transaction(pool, async db => { const { session } = await loadAuth(c, db); await eraseSession(db, session.id); });
+    await transaction(pool, async db => {
+      const { session, user } = await loadAuth(c, db);
+      await audit(db, user, 'auth.logout', session.id, { method: 'explicit' });
+      await eraseSession(db, session.id);
+    });
     return ok(c, { loggedOut: true });
   });
   app.get('/api/v1/cases', async c => {
@@ -476,6 +481,7 @@ export function createApi(options = {}) {
       await db.query(`INSERT INTO portal_case_events(id,complaint_id,actor_id,sequence,author_role,author_name,message,old_status,new_status,created_at)
         VALUES($1,$2,$3,1,'citizen',$4,$5,NULL,'pending',$6)`, [newId(), row.id, user.id, user.name, details, now()]);
       await addNotification(db, row, user.language);
+      await audit(db, user, 'case.created', row.id);
       return row;
     });
     scheduleNotifications();
@@ -588,7 +594,10 @@ export function createApi(options = {}) {
       if (user.version !== value.version) throw new ApiError('msg_version_conflict', 409);
       user.active = value.active; user.version++;
       await db.query('UPDATE portal_users SET active=$1,version=$2,updated_at=$3 WHERE id=$4', [user.active, user.version, now(), user.id]);
-      if (!user.active) await revoke(db, user.id);
+      if (!user.active) {
+        await revoke(db, user.id);
+        await audit(db, actor, 'auth.sessions_revoked', user.id);
+      }
       await audit(db, actor, 'user.active', user.id, { active: user.active, version: user.version });
       return user;
     });

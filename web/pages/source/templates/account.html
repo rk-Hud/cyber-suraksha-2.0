@@ -8,6 +8,17 @@
   <nav id="account-navigation" class="workspace-nav" aria-label="{{ t('nav_account') }}">
     <button type="button" data-account-view="login">{{ t('sign_in') }}</button><button type="button" data-account-view="register">{{ t('create_account') }}</button><button type="button" data-account-view="admin-login">{{ t('admin_sign_in') }}</button>
   </nav>
+  {% if test_workspace and operator_api_url %}
+  <aside id="unified-owner-entry" class="surface owner-entry" aria-labelledby="owner-entry-heading">
+    <div>
+      <p class="eyebrow">{{ t('unified_owner_kicker') }}</p>
+      <h2 id="owner-entry-heading">{{ t('unified_owner_title') }}</h2>
+      <p>{{ t('unified_owner_description') }}</p>
+      <p class="field-hint">{{ t('unified_owner_separation') }}</p>
+    </div>
+    <a id="operator-entry-link" class="button button-dark" href="{{ base_path }}/{{ lang }}/operator.html">{{ t('admin_sign_in') }} →</a>
+  </aside>
+  {% endif %}
   <div id="signed-in-identity" class="account-identity" hidden></div>
 
   <section data-account-panel="login" class="auth-layout">

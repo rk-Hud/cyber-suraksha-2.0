@@ -47,7 +47,9 @@ class StaticBuild(unittest.TestCase):
     def test_isolated_preview_does_not_change_production_configuration(self):
         original = (ROOT / 'source/site.json').read_bytes()
         settings = json.loads(original)
-        settings.update(base_path='/cyber-suraksha-2.0/google-test', api_url='https://stage.example', test_workspace=True)
+        settings.update(base_path='/cyber-suraksha-2.0/google-test', api_url='https://stage.example',
+                        operator_api_url='https://br-sweet-band-azhwai4r-csownerstage.compute.c-3.ap-southeast-1.aws.neon.tech',
+                        test_workspace=True)
         with tempfile.TemporaryDirectory() as directory:
             temporary = Path(directory)
             config = temporary / 'site.json'
@@ -61,8 +63,12 @@ class StaticBuild(unittest.TestCase):
             account = (output / 'en/account.html').read_text()
             public = (output / 'en/index.html').read_text()
             self.assertIn('data-api-url="https://stage.example"', account)
-            self.assertIn('Temporary test workspace', account)
-            self.assertIn('Use fictional cases only.', account)
+            self.assertIn('Staging preview', account)
+            self.assertIn('Fictional records only', account)
+            self.assertNotIn('Temporary test workspace', account)
+            self.assertIn('id="operator-entry-link"', account)
+            self.assertIn('/cyber-suraksha-2.0/google-test/en/operator.html', account)
+            self.assertIn('id="operator-tabs"', (output / 'en/operator.html').read_text())
             self.assertIn('/cyber-suraksha-2.0/google-test/en/privacy.html', account)
             self.assertIn('https://accounts.google.com/gsi/client', account)
             self.assertNotIn('https://accounts.google.com', public)
@@ -85,6 +91,7 @@ class StaticBuild(unittest.TestCase):
                 self.assertNotIn('style-src-attr', account)
                 self.assertNotIn('style-src-elem', account)
                 self.assertNotIn('Temporary test workspace', account)
+                self.assertNotIn('id="operator-entry-link"', account)
                 self.assertFalse((output / language / 'operator.html').exists())
 
     def test_build_refuses_to_replace_source_or_unrelated_output(self):
