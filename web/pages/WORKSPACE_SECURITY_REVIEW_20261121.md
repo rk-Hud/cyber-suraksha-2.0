@@ -69,7 +69,7 @@ rotate tokens or import any private backup merely because CI succeeds.
 
 ## Known privacy, completeness and release blockers
 
-1. The encrypted staging backup's isolated restore rehearsal is **NOT VERIFIED**. A GitHub repository cannot access the Windows DPAPI-protected backup, so source review does not satisfy this requirement.
+1. The fresh Nov 21 staging backup's archive listing passed (53,286 bytes; six core tables), but its first isolated restore failed because local PostgreSQL rejected `pg_attver`. The corrected restore result and zero-orphan checks are **NOT VERIFIED** here. This archive is **not automatically encrypted**; keep it private. GitHub cannot access the user's local backup or verify its restore.
 2. No real staging Google + password + TOTP browser sign-in test was performed; CI uses synthetic credentials.
 3. Audit history can show only events actually recorded. Browser close is not a confirmed logout. A failed-login email is an unverified claim. A session row is not proof that a browser is open.
 4. Event retention, privacy disclosure, citizen consent and authorized account-disable policy require separately approved rules. No cleanup, old-record purge, or retention SQL was introduced.
