@@ -26,3 +26,18 @@ CREATE TABLE IF NOT EXISTS cs_stage_operator_credential_uses (
   fingerprint CHAR(64) PRIMARY KEY,
   used_at BIGINT NOT NULL
 );
+
+-- Operator credentials are never stored in the citizen session namespace.
+-- The only writer is the separately deployed, explicitly enabled Function.
+CREATE TABLE IF NOT EXISTS cs_stage_operator_sessions (
+  id VARCHAR(64) PRIMARY KEY,
+  token_hash CHAR(64) NOT NULL UNIQUE,
+  owner_id VARCHAR(64) NOT NULL REFERENCES portal_users(id),
+  owner_version INTEGER NOT NULL CHECK (owner_version > 0),
+  created_at BIGINT NOT NULL,
+  expires_at BIGINT NOT NULL,
+  mfa_at BIGINT NOT NULL,
+  revoked_at BIGINT
+);
+CREATE INDEX IF NOT EXISTS cs_stage_operator_sessions_owner_expiry
+  ON cs_stage_operator_sessions(owner_id,expires_at);
