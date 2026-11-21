@@ -108,7 +108,7 @@ def main(argv=None):
  if not isinstance(test_workspace,bool):raise ValueError('test_workspace must be a boolean')
  operator_api_url,csp_operator_connect=api_configuration(site.get('operator_api_url',''))
  if operator_api_url and not test_workspace:raise ValueError('Operator service URL is test-workspace only')
- if operator_api_url and not re.fullmatch(r'https://br-sweet-band-azhwai4r-[a-z0-9]+\\.compute\\.[a-z0-9.-]+\\.neon\\.tech',operator_api_url):
+ if operator_api_url and urlsplit(operator_api_url).hostname != 'br-sweet-band-azhwai4r-csownerstage.compute.c-3.ap-southeast-1.aws.neon.tech':
   raise ValueError('Operator API must use the approved isolated staging branch')
  google_client_id=site.get('google_client_id','')
  if not isinstance(google_client_id,str) or google_client_id and not re.fullmatch(r'[0-9]+-[A-Za-z0-9_-]+\.apps\.googleusercontent\.com',google_client_id):raise ValueError('Invalid Google OAuth web client ID')
