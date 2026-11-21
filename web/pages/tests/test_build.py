@@ -61,14 +61,38 @@ class StaticBuild(unittest.TestCase):
             account = (output / 'en/account.html').read_text()
             public = (output / 'en/index.html').read_text()
             self.assertIn('data-api-url="https://stage.example"', account)
-            self.assertIn('Temporary test workspace', account)
-            self.assertIn('Use fictional cases only.', account)
+            self.assertIn('Staging workspace', account)
+            self.assertIn('For testing only.', account)
             self.assertIn('/cyber-suraksha-2.0/google-test/en/privacy.html', account)
             self.assertIn('https://accounts.google.com/gsi/client', account)
             self.assertNotIn('https://accounts.google.com', public)
             self.assertIn('content="strict-origin-when-cross-origin"', account)
             self.assertIn('content="no-referrer"', public)
         self.assertEqual((ROOT / 'source/site.json').read_bytes(), original)
+
+    def test_unified_staging_operator_links_and_compact_notice(self):
+        config = ROOT / 'config/google-test.json'
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / 'review'
+            export.main(['--config', str(config), '--output', str(output)])
+            for language in ('en', 'hi', 'te'):
+                account = (output / language / 'account.html').read_text()
+                operator = (output / language / 'operator.html').read_text()
+                expected = '/cyber-suraksha-2.0/google-test/' + language + '/operator.html'
+                self.assertIn('data-operator-url="' + expected + '"', account)
+                self.assertIn('href="' + expected + '"', account)
+                self.assertIn('data-operator-panel="activity"', operator)
+                self.assertIn('data-operator-panel="users"', operator)
+                self.assertIn('data-operator-panel="sessions"', operator)
+                self.assertIn('data-operator-panel="audit"', operator)
+                self.assertIn('data-operator-panel="cases"', operator)
+                self.assertNotIn('Temporary test workspace', account)
+                self.assertNotIn('Temporary test workspace', operator)
+                self.assertIn('fictional', (output / 'en/account.html').read_text().lower())
+            script = (output / 'static/js/operator.js').read_text()
+            self.assertNotIn('localStorage', script.replace('// No browser persistence, cookies, analytics or token logs.', ''))
+            self.assertIn('Asia/Kolkata', script)
+            self.assertIn('textContent', script)
 
     def test_unconfigured_google_never_adds_identity_provider_or_inline_style_permissions(self):
         settings = json.loads((ROOT / 'source/site.json').read_text())
