@@ -135,6 +135,24 @@ test('staging owner provisioning requires approved Google subject, private key a
     return result.rows[0].attempts;
   };
 
+  // Unverified identity claims must not consume the approved owner's
+  // nonprivileged Google-proof rate budget either.
+  for (let i = 0; i < 13; i++) {
+    const nonce = await request(op, '/identity-challenge', {});
+    assert.equal(nonce.status, 200);
+    const denied = await request(op, '/identity-proof', {
+      ...credentials(nonce.json.data, 'forged') });
+    assert.equal(denied.status, 401);
+  }
+  assert.equal(await rateUse('operator-identity-proof'), 0);
+  const approvedNonce = await request(op, '/identity-challenge', {});
+  assert.equal(approvedNonce.status, 200);
+  const verifiedIdentity = await request(op, '/identity-proof', credentials(approvedNonce.json.data));
+  assert.equal(verifiedIdentity.status, 200);
+  assert.equal(verifiedIdentity.json.data.operatorEnrolled, false);
+  assert.equal(await rateUse('operator-identity-proof'), 1);
+  assert.equal(await rateUse('login'), 0);
+
   // Public or cross-origin requests never bootstrap an owner.
   assert.equal((await request(op, '/challenge', {}, 'https://evil.example')).status, 403);
   let proof = await challenge(op);
