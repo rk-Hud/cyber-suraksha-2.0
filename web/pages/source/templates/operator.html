@@ -6,6 +6,7 @@
     <h1 id="operator-title">Owner authentication and fictional case review</h1>
     <p>CYBER SURAKSHA 2.0 is an independently operated cybersecurity awareness service, not a government or police complaint portal. Do not submit real victim information.</p>
   </div>
+  <p class="owner-breadcrumb"><a href="{{ base_path }}/{{ lang }}/account.html">{{ t('unified_dash_citizen_link') }}</a> / {{ t('unified_owner_title') }}</p>
   <div id="operator-status" role="status" aria-live="polite" class="account-service-status">Checking private operator availability.</div>
   <div class="surface auth-panel">
     <h2>Separate administrator sign-in</h2>
@@ -38,14 +39,64 @@
     <p>Authenticator URI: <code id="operator-totp-uri"></code></p>
     <p>After adding the account in your authenticator, choose Finish enrollment and start a fresh Google verification.</p>
   </section>
-  <section id="operator-dashboard" class="workspace" hidden>
-    <h2>Authorized fictional case administration</h2>
-    <p>Short-lived owner session. Every case change requires fresh server-side MFA and is audited. Only fictional records may be processed.</p>
-    <div class="button-row">
-      <button class="button button-secondary" type="button" id="operator-refresh">Refresh cases</button>
-      <button class="button button-secondary" type="button" id="operator-logout">Sign out</button>
+  <section id="operator-dashboard" class="workspace owner-dashboard" hidden aria-labelledby="operator-dashboard-title">
+    <div class="workspace-heading">
+      <div>
+        <p class="eyebrow">{{ t('unified_owner_kicker') }}</p>
+        <h2 id="operator-dashboard-title">{{ t('unified_dash_title') }}</h2>
+        <p>{{ t('unified_dash_intro') }}</p>
+      </div>
+      <a class="button button-secondary" href="{{ base_path }}/{{ lang }}/account.html">{{ t('unified_dash_citizen_link') }}</a>
     </div>
-    <div id="operator-cases" class="records-region"></div>
+    <p class="boundary-note">{{ t('unified_dash_boundary') }}</p>
+    <div class="button-row owner-actions">
+      <button class="button button-secondary" type="button" id="operator-refresh">{{ t('unified_dash_refresh') }}</button>
+      <button class="button button-dark" type="button" id="operator-logout">{{ t('unified_dash_logout') }}</button>
+    </div>
+    <nav id="operator-tabs" class="owner-tabs" aria-label="{{ t('unified_dash_title') }}">
+      {% for key, label in [('overview','unified_dash_overview'),('users','unified_dash_users'),('events','unified_dash_events'),('sessions','unified_dash_sessions'),('cases','unified_dash_cases'),('audit','unified_dash_audit')] %}
+      <button type="button" data-operator-tab="{{ key }}" class="workspace-link" aria-controls="operator-panel-{{ key }}" aria-current="{{ 'page' if key == 'overview' else 'false' }}">{{ t(label) }}</button>
+      {% endfor %}
+    </nav>
+    <section id="operator-panel-overview" data-operator-panel="overview" aria-labelledby="operator-dashboard-title">
+      <div id="operator-summary" class="owner-metrics" role="status"></div>
+      <p id="operator-dashboard-note" class="field-hint">{{ t('unified_dash_boundary') }}</p>
+    </section>
+    <section id="operator-panel-users" data-operator-panel="users" hidden aria-label="{{ t('unified_dash_users') }}">
+      <form id="operator-user-search" class="owner-filters" method="get" action="#">
+        <label for="operator-search">{{ t('unified_dash_search') }}</label>
+        <input id="operator-search" name="search" type="search" maxlength="80" placeholder="{{ t('unified_dash_search_placeholder') }}" autocomplete="off">
+        <button type="submit" class="button button-dark">{{ t('unified_dash_search') }}</button>
+      </form>
+      <div id="operator-users" class="owner-scroll" role="status"></div>
+      <div id="operator-users-pagination" class="button-row owner-pagination"></div>
+    </section>
+    <section id="operator-panel-events" data-operator-panel="events" hidden aria-label="{{ t('unified_dash_events') }}">
+      <div class="owner-filters">
+        <label for="operator-event-filter">{{ t('unified_dash_filter') }}</label>
+        <select id="operator-event-filter">
+          <option value="all">{{ t('unified_dash_filter_all') }}</option>
+          <option value="login">{{ t('unified_dash_filter_login') }}</option>
+          <option value="logout">{{ t('unified_dash_filter_logout') }}</option>
+          <option value="audit">{{ t('unified_dash_filter_audit') }}</option>
+        </select>
+      </div>
+      <p class="field-hint">{{ t('unified_dash_claimed_email') }}</p>
+      <div id="operator-events" class="owner-scroll" role="status"></div>
+      <div id="operator-events-pagination" class="button-row owner-pagination"></div>
+    </section>
+    <section id="operator-panel-sessions" data-operator-panel="sessions" hidden aria-label="{{ t('unified_dash_sessions') }}">
+      <p class="field-hint">{{ t('unified_dash_session_note') }}</p>
+      <div id="operator-sessions" class="owner-scroll" role="status"></div>
+      <div id="operator-sessions-pagination" class="button-row owner-pagination"></div>
+    </section>
+    <section id="operator-panel-cases" data-operator-panel="cases" hidden aria-label="{{ t('unified_dash_cases') }}">
+      <div id="operator-cases" class="records-region"></div>
+    </section>
+    <section id="operator-panel-audit" data-operator-panel="audit" hidden aria-label="{{ t('unified_dash_audit') }}">
+      <div id="operator-audit" class="owner-scroll" role="status"></div>
+      <div id="operator-audit-pagination" class="button-row owner-pagination"></div>
+    </section>
   </section>
 </section>
 {% endblock %}
