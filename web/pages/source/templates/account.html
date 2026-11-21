@@ -1,13 +1,14 @@
 {% extends 'base.html' %}
 {% block content %}
-<section class="shell section account-workspace" id="account-app" aria-labelledby="account-title">
+<section class="shell section account-workspace" id="account-app" aria-labelledby="account-title" data-operator-url="{% if test_workspace and operator_api_url %}{{ base_path }}/{{ lang }}/operator.html{% endif %}">
   <div class="section-heading"><p class="eyebrow">{{ t('portal_kicker') }}</p><h1 id="account-title">{{ t('account_page_title') }}</h1><p>{{ t('portal_boundary') }}</p></div>
   <div id="account-service-status" class="account-service-status" role="status"><p>{{ t('account_connecting') }}</p></div>
   <div id="account-message" class="message-banner" role="status" aria-live="polite" hidden></div>
   <p class="field-hint memory-note">{{ t('account_memory_note') }}</p>
   <nav id="account-navigation" class="workspace-nav" aria-label="{{ t('nav_account') }}">
-    <button type="button" data-account-view="login">{{ t('sign_in') }}</button><button type="button" data-account-view="register">{{ t('create_account') }}</button><button type="button" data-account-view="admin-login">{{ t('admin_sign_in') }}</button>
+    <button type="button" data-account-view="login">{{ t('sign_in') }}</button><button type="button" data-account-view="register">{{ t('create_account') }}</button>{% if test_workspace and operator_api_url %}<a class="workspace-link" href="{{ base_path }}/{{ lang }}/operator.html">{{ t('admin_sign_in') }} →</a>{% else %}<button type="button" data-account-view="admin-login">{{ t('admin_sign_in') }}</button>{% endif %}
   </nav>
+  <p class="account-owner-entry" {% if not test_workspace or not operator_api_url %}hidden{% endif %}><strong>{{ t('admin_sign_in') }}:</strong> {{ t('portal_admin_body') }} <a href="{{ base_path }}/{{ lang }}/operator.html">{{ t('admin_sign_in') }} →</a></p>
   <div id="signed-in-identity" class="account-identity" hidden></div>
 
   <section data-account-panel="login" class="auth-layout">
