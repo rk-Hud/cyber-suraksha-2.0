@@ -3,7 +3,7 @@
 <section class="shell section account-workspace" aria-labelledby="operator-title">
   <div class="section-heading">
     <p class="eyebrow">PRIVATE OPERATOR ACCESS</p>
-    <h1 id="operator-title">Owner authentication and fictional case review</h1>
+    <h1 id="operator-title">Citizen Services and Owner Workspace</h1><p><a href="{{ base_path }}/{{ lang }}/account.html">← Citizen services</a> / <strong>Private administrator workspace</strong></p>
     <p>CYBER SURAKSHA 2.0 is an independently operated cybersecurity awareness service, not a government or police complaint portal. Do not submit real victim information.</p>
   </div>
   <div id="operator-status" role="status" aria-live="polite" class="account-service-status">Checking private operator availability.</div>
@@ -13,8 +13,8 @@
     <form id="operator-credentials" class="stack-form" method="post" action="#">
       <label class="field-label" for="operator-mode">Action</label>
       <select id="operator-mode">
-        <option value="identity" selected>Verify my Google owner identity (no account created)</option>
-        <option value="login">Login with MFA</option>
+        <option value="login" selected>Login with MFA</option>
+        <option value="identity">Verify my Google owner identity (no account created)</option>
         <option value="begin">Begin approved enrollment</option>
         <option value="finish">Finish authenticator enrollment</option>
       </select>
@@ -38,14 +38,93 @@
     <p>Authenticator URI: <code id="operator-totp-uri"></code></p>
     <p>After adding the account in your authenticator, choose Finish enrollment and start a fresh Google verification.</p>
   </section>
-  <section id="operator-dashboard" class="workspace" hidden>
-    <h2>Authorized fictional case administration</h2>
-    <p>Short-lived owner session. Every case change requires fresh server-side MFA and is audited. Only fictional records may be processed.</p>
-    <div class="button-row">
-      <button class="button button-secondary" type="button" id="operator-refresh">Refresh cases</button>
-      <button class="button button-secondary" type="button" id="operator-logout">Sign out</button>
+  <section id="operator-dashboard" class="workspace operator-workspace" hidden>
+    <div class="workspace-heading">
+      <div><p class="eyebrow">OWNER AUTHORIZED · STAGING</p>
+        <h2>Administrator dashboard</h2>
+        <p>Short-lived Google + password + authenticator session. Fictional records only; all changes are audited.</p>
+      </div>
+      <button class="button button-secondary" type="button" id="operator-logout">Sign out securely</button>
     </div>
-    <div id="operator-cases" class="records-region"></div>
+    <nav class="workspace-nav operator-tabs" aria-label="Owner dashboard views">
+      <button type="button" data-operator-view="overview" aria-current="page">Overview</button>
+      <button type="button" data-operator-view="users">User accounts</button>
+      <button type="button" data-operator-view="activity">Login / logout activity</button>
+      <button type="button" data-operator-view="sessions">Sessions</button>
+      <button type="button" data-operator-view="cases">Fictional cases</button>
+      <button type="button" data-operator-view="audit">Audit history</button>
+    </nav>
+    <section data-operator-panel="overview">
+      <div class="operator-metrics" aria-label="Workspace summary">
+        <div class="surface operator-metric"><span>Registered citizens</span><strong id="operator-metric-users">—</strong></div>
+        <div class="surface operator-metric"><span>Active session snapshots</span><strong id="operator-metric-sessions">—</strong></div>
+        <div class="surface operator-metric"><span>Fictional cases</span><strong id="operator-metric-cases">—</strong></div>
+        <div class="surface operator-metric"><span>Pending review</span><strong id="operator-metric-pending">—</strong></div>
+      </div>
+      <p class="field-hint">Only confirmed server-side data is displayed. Browser closure is not evidence of logout.</p>
+      <button class="button button-secondary" type="button" id="operator-refresh">Refresh overview and cases</button>
+    </section>
+    <section data-operator-panel="users" hidden>
+      <h3>User account directory</h3>
+      <p class="field-hint">Owner-only verified identities, case counts and account activity. Account state changes require fresh MFA.</p>
+      <form data-operator-search="users" class="operator-filter" role="search">
+        <label for="operator-search-users">Search name or email</label>
+        <input id="operator-search-users" name="q" type="search" autocomplete="off" maxlength="100">
+        <button class="button button-secondary" type="submit">Search</button>
+      </form>
+      <div id="operator-users" class="operator-table-region" aria-live="polite"></div>
+      <div class="operator-pager" data-operator-pager="users"></div>
+    </section>
+    <section data-operator-panel="activity" hidden>
+      <h3>Authentication events</h3>
+      <p class="field-hint">Explicit sign-out is recorded separately from session expiry. Unknown activity is never presented as a confirmed login/logout.</p>
+      <form data-operator-search="activity" class="operator-filter" role="search">
+        <label for="operator-search-activity">Search name or email</label>
+        <input id="operator-search-activity" name="q" type="search" autocomplete="off" maxlength="100">
+        <button class="button button-secondary" type="submit">Search</button>
+      </form>
+      <div id="operator-activity" class="operator-table-region" aria-live="polite"></div>
+      <div class="operator-pager" data-operator-pager="activity"></div>
+    </section>
+    <section data-operator-panel="sessions" hidden>
+      <h3>Session snapshots</h3>
+      <p class="field-hint">Active means the server has a nonexpired session record, not proof of a currently open browser. Closed browsers are not detectable.</p>
+      <form data-operator-search="sessions" class="operator-filter" role="search">
+        <label for="operator-search-sessions">Filter email</label>
+        <input id="operator-search-sessions" name="q" type="search" autocomplete="off" maxlength="100">
+        <button class="button button-secondary" type="submit">Search</button>
+      </form>
+      <div id="operator-sessions" class="operator-table-region" aria-live="polite"></div>
+      <div class="operator-pager" data-operator-pager="sessions"></div>
+    </section>
+    <section data-operator-panel="cases" hidden>
+      <h3>Authorized fictional case administration</h3>
+      <form data-operator-search="cases" class="operator-filter" role="search">
+        <label for="operator-search-cases">Subject or reference</label>
+        <input id="operator-search-cases" name="q" type="search" autocomplete="off" maxlength="100">
+        <label for="operator-case-filter">Status</label>
+        <select id="operator-case-filter" name="status">
+          <option value="">All statuses</option>
+          <option value="pending">Pending</option><option value="in_review">In review</option>
+          <option value="awaiting_info">Awaiting information</option><option value="resolved">Resolved</option>
+          <option value="closed">Closed</option>
+        </select>
+        <button class="button button-secondary" type="submit">Filter</button>
+      </form>
+      <div id="operator-cases" class="records-region"></div>
+      <div class="operator-pager" data-operator-pager="cases"></div>
+    </section>
+    <section data-operator-panel="audit" hidden>
+      <h3>Administrator audit history</h3>
+      <p class="field-hint">Only non-secret event metadata is shown.</p>
+      <form data-operator-search="audit" class="operator-filter" role="search">
+        <label for="operator-search-audit">Search action or record</label>
+        <input id="operator-search-audit" name="q" type="search" autocomplete="off" maxlength="100">
+        <button class="button button-secondary" type="submit">Search</button>
+      </form>
+      <div id="operator-audit" class="operator-table-region" aria-live="polite"></div>
+      <div class="operator-pager" data-operator-pager="audit"></div>
+    </section>
   </section>
 </section>
 {% endblock %}
