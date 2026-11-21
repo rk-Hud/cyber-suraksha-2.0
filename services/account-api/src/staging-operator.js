@@ -203,7 +203,9 @@ export function createStagingOperator(options = {}) {
     await body(c, []);
     if (env.STAGING_BRANCH_ID !== BRANCH || !config.googleClientId || !settings.email)
       reject('operator_disabled', 503);
-    await rate('operator-identity-challenge', 12, 900);
+    // Public nonce issuance is capped as an emergency resource safety limit, not an
+    // authentication-attempt lockout. Edge-side per-client throttling remains necessary.
+    await rate('operator-identity-challenge', 900, 900);
     const id = newId(), nonce = newToken(), expiresAt = now() + 300;
     await pool.query('INSERT INTO cs_stage_operator_challenges(id,nonce_hash,created_at,expires_at) '
       + 'VALUES($1,$2,$3,$4)', [id, hashed('nonce', nonce), now(), expiresAt]);
@@ -213,7 +215,6 @@ export function createStagingOperator(options = {}) {
     const value = await body(c, ['challengeId', 'nonce', 'credential']);
     if (env.STAGING_BRANCH_ID !== BRANCH || !config.googleClientId || !settings.email)
       reject('operator_disabled', 503);
-    await rate('operator-identity-proof', 12, 900);
     if (!identifier(value.challengeId) || typeof value.nonce !== 'string'
       || !/^[A-Za-z0-9_-]{43}$/.test(value.nonce)) reject();
     const challenge = (await pool.query(
@@ -231,12 +232,18 @@ export function createStagingOperator(options = {}) {
     const citizen = await pool.query(
       'SELECT 1 FROM portal_google_identities WHERE google_sub=$1 LIMIT 1', [google.subject]);
     if (citizen.rowCount) reject('operator_forbidden', 403);
+    // Only cryptographically verified Google assertions may spend the shared
+    // identity-proof budget; anonymous requests cannot lock out the owner.
+    await rate('operator-identity-proof', 12, 900);
     await transaction(pool, async db => { await consumeProof(db, value); });
     return safe(c, { verifiedEmail, verifiedGoogleSub: google.subject, operatorEnrolled: false });
   });
   app.post('/operator/v1/challenge', async c => {
     ready(); await body(c, []);
-    await rate('challenge', 30, 60);
+    // Keep a broad infrastructure safety cap; never let a handful of anonymous
+    // challenge requests consume the owner's small credential-attempt budget.
+    // Configure upstream per-client throttling before deploying publicly.
+    await rate('challenge', 600, 60);
     const id = newId(), nonce = newToken(), expiresAt = now() + 300;
     await pool.query('INSERT INTO cs_stage_operator_challenges(id,nonce_hash,created_at,expires_at) '
       + 'VALUES($1,$2,$3,$4)', [id, hashed('nonce', nonce), now(), expiresAt]);
@@ -245,10 +252,12 @@ export function createStagingOperator(options = {}) {
   app.post('/operator/v1/begin', async c => {
     ready();
     const value = await body(c, ['challengeId', 'nonce', 'credential', 'approvalKey', 'password', 'confirmPassword']);
-    await rate('begin', 12, 900);
     secureApproval(value.approvalKey);
     password(value.password, value.confirmPassword);
     const google = await credentialProof(value);
+    // Require BOTH the private approval secret and signed Google identity
+    // before charging the privileged bootstrap budget.
+    await rate('begin', 12, 900);
     const secret = generateTotpSecret();
     const encrypted = encryptTotp(secret, config.totpKey);
     const passwordHash = await hashPassword(value.password);
@@ -272,11 +281,11 @@ export function createStagingOperator(options = {}) {
   app.post('/operator/v1/finish', async c => {
     ready();
     const value = await body(c, ['challengeId', 'nonce', 'credential', 'approvalKey', 'provisionId', 'code']);
-    await rate('finish', 20, 900);
     secureApproval(value.approvalKey);
     await credentialProof(value);
     if (!identifier(value.provisionId) || typeof value.code !== 'string'
       || !/^[0-9]{6}$/.test(value.code)) reject();
+    await rate('finish', 20, 900);
     const result = await transaction(pool, async db => {
       await db.query("SELECT pg_advisory_xact_lock(hashtextextended('cs-stage:owner:bootstrap',0))");
       await consumeProof(db, value);
@@ -311,10 +320,12 @@ export function createStagingOperator(options = {}) {
   app.post('/operator/v1/login', async c => {
     ready();
     const value = await body(c, ['challengeId', 'nonce', 'credential', 'password', 'code']);
-    await rate('login', 8, 900);
     await credentialProof(value);
     if (typeof value.password !== 'string' || value.password.length > 128
       || typeof value.code !== 'string' || !/^[0-9]{6}$/.test(value.code)) reject();
+    // Authenticate the signed, nonce-bound Google assertion FIRST. Unverified
+    // clients cannot exhaust the owner's 8-attempt password/TOTP budget.
+    await rate('login', 8, 900);
     const candidate = (await pool.query(
       "SELECT * FROM portal_users WHERE email=$1 AND role='owner' AND active=true",
       [settings.email])).rows[0];
