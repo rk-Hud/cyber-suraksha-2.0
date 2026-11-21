@@ -92,7 +92,23 @@
       <div id="operator-sessions-pagination" class="button-row owner-pagination"></div>
     </section>
     <section id="operator-panel-cases" data-operator-panel="cases" hidden aria-label="{{ t('unified_dash_cases') }}">
+      <form id="operator-case-filters" class="owner-filters" method="get" action="#">
+        <label for="operator-case-search">{{ t('unified_dash_case_search') }}</label>
+        <input id="operator-case-search" name="search" type="search" maxlength="80" autocomplete="off"
+          placeholder="{{ t('unified_dash_case_search_placeholder') }}">
+        <label for="operator-case-status">{{ t('unified_dash_filter') }}</label>
+        <select id="operator-case-status" name="status">
+          <option value="all">{{ t('unified_dash_filter_all') }}</option>
+          <option value="pending">pending</option>
+          <option value="in_review">in_review</option>
+          <option value="awaiting_info">awaiting_info</option>
+          <option value="resolved">resolved</option>
+          <option value="closed">closed</option>
+        </select>
+        <button type="submit" class="button button-dark">{{ t('unified_dash_search') }}</button>
+      </form>
       <div id="operator-cases" class="records-region"></div>
+      <div id="operator-cases-pagination" class="button-row owner-pagination" aria-live="polite"></div>
     </section>
     <section id="operator-panel-audit" data-operator-panel="audit" hidden aria-label="{{ t('unified_dash_audit') }}">
       <div id="operator-audit" class="owner-scroll" role="status"></div>
