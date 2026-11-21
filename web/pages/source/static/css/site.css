@@ -641,3 +641,38 @@ table { width: 100%; border-collapse: collapse; text-align: left; }
 .owner-entry .button { flex-shrink: 0; white-space: nowrap; }
 @media(max-width: 700px) { .owner-entry { flex-direction: column; align-items: stretch; }
   .owner-entry .button { text-align: center; white-space: normal; } }
+
+/* Responsive authenticated owner control-room: no dependency on external UI assets. */
+.owner-breadcrumb { margin: 0 0 20px; font-size: .85rem; }
+.owner-dashboard { padding-top: 22px; }
+.owner-dashboard .workspace-heading { align-items: center; }
+.owner-tabs { display: flex; gap: 8px; flex-wrap: wrap; border-bottom: 1px solid var(--line); margin: 22px 0; padding-bottom: 14px; }
+.owner-tabs button { border: 1px solid var(--line); background: var(--white); border-radius: 6px;
+  padding: 10px 14px; font-weight: 650; min-width: auto; }
+.owner-tabs button[aria-current="page"] { color: white; background: var(--dark-panel); border-color: var(--dark-panel); }
+.owner-metrics { display: grid; grid-template-columns: repeat(auto-fit,minmax(175px,1fr)); gap: 14px; }
+.owner-metric { padding: 18px; display: flex; flex-direction: column; gap: 6px; }
+.owner-metric-label { font-size: .8rem; font-weight: 650; color: var(--muted); }
+.owner-metric strong { font-size: clamp(1.4rem,2.5vw,2.1rem); font-variant-numeric: tabular-nums; }
+.owner-scroll { overflow-x: auto; max-width: 100%; margin-top: 14px; }
+.owner-data-table { width: 100%; border-collapse: collapse; background: white; min-width: 680px; font-size: .83rem; }
+.owner-data-table th,.owner-data-table td { text-align: left; vertical-align: top; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.owner-data-table th { background: #eef5f4; font-weight: 750; }
+.owner-data-table td { max-width: 300px; overflow-wrap: anywhere; }
+.owner-filters { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 12px 0; }
+.owner-filters input { width: min(330px,100%); }
+.owner-filters select { width: min(220px,100%); }
+.owner-filters label { font-weight: 650; font-size: .85rem; }
+.owner-pagination { align-items: center; padding-block: 14px; }
+.owner-pagination button { width: auto; }
+.owner-user-detail { margin-top: 12px; padding: 18px; }
+.owner-user-detail:empty { display: none; }
+.owner-case-reference-list { padding-left: 24px; }
+.owner-actions { margin-bottom: 12px; }
+@media(max-width:700px) { .owner-dashboard .workspace-heading { display: block; }
+  .owner-tabs { overflow-x: auto; flex-wrap: nowrap; }
+  .owner-tabs button { flex: 0 0 auto; }
+  .owner-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .owner-filters { align-items: stretch; flex-direction: column; }
+  .owner-filters input,.owner-filters select { width: 100%; }
+}
