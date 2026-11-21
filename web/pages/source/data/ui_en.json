@@ -452,6 +452,6 @@
   "terms_limits_title": "Guidance and availability",
   "terms_limits_body": "Educational tools and warning scores can miss attacks or flag legitimate content. Independently verify sensitive actions through trusted official channels. Service availability and message delivery can be interrupted. Stored case history is the primary place to check a support update; an email is not proof that a case has been resolved.",
   "google_recovery_hint": "Accounts created with Google must use Google Sign-In. Recover your Google account through Google; this website cannot reset your Google password.",
-  "test_workspace_title": "Temporary test workspace",
-  "test_workspace_body": "Use fictional cases only. Do not submit real personal information or victim details."
+  "test_workspace_title": "Staging workspace · fictional records",
+  "test_workspace_body": "For testing only. Do not enter real personal information or report real incidents."
 }
