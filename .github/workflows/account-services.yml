@@ -46,6 +46,11 @@ jobs:
           npm run check
           npm test
           npm run build
+          node --check src/staging-operator.js
+          node --check src/index-staging-operator.js
+          node --check scripts/build-staging-operator.mjs
+          node scripts/build-staging-operator.mjs
+          test -s dist-operator/index.mjs
       - name: Verify multilingual Pages and browser tools
         working-directory: web/pages
         run: |
@@ -53,4 +58,8 @@ jobs:
           npm test
           npm run build
           npm run verify
+          node --check source/static/js/operator.js
+          python scripts/export_site.py --config config/google-test.json --output /tmp/cs-operator-pages-ci
+          test -s /tmp/cs-operator-pages-ci/en/operator.html
+          test -s /tmp/cs-operator-pages-ci/static/js/operator.js
           python -m unittest discover -s tests -p 'test_*.py' -v

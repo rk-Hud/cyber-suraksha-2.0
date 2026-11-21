@@ -3,5 +3,6 @@
   "base_path": "/cyber-suraksha-2.0/google-test",
   "api_url": "https://br-sweet-band-azhwai4r-csgooglestage.compute.c-3.ap-southeast-1.aws.neon.tech",
   "google_client_id": "942815048048-6pi4g094nto74sad0afo1dqdpvhdlk3g.apps.googleusercontent.com",
-  "test_workspace": true
+  "test_workspace": true,
+  "operator_api_url": "https://br-sweet-band-azhwai4r-csownerstage.compute.c-3.ap-southeast-1.aws.neon.tech"
 }

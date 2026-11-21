@@ -54,7 +54,10 @@ class StaticBuild(unittest.TestCase):
             config.write_text(json.dumps(settings))
             output = temporary / 'compiled'
             export.main(['--config', str(config), '--output', str(output)])
-            self.assertEqual(len(list(output.rglob('*.html'))), 13)
+            self.assertEqual(len(list(output.rglob('*.html'))), 16)
+            self.assertTrue((output / 'en/operator.html').is_file())
+            self.assertTrue((output / 'hi/operator.html').is_file())
+            self.assertTrue((output / 'te/operator.html').is_file())
             account = (output / 'en/account.html').read_text()
             public = (output / 'en/index.html').read_text()
             self.assertIn('data-api-url="https://stage.example"', account)
@@ -82,6 +85,7 @@ class StaticBuild(unittest.TestCase):
                 self.assertNotIn('style-src-attr', account)
                 self.assertNotIn('style-src-elem', account)
                 self.assertNotIn('Temporary test workspace', account)
+                self.assertFalse((output / language / 'operator.html').exists())
 
     def test_build_refuses_to_replace_source_or_unrelated_output(self):
         with tempfile.TemporaryDirectory() as directory:
