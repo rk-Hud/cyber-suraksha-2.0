@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="shell section account-workspace" aria-labelledby="operator-title">
+  <div class="section-heading">
+    <p class="eyebrow">PRIVATE OPERATOR ACCESS</p>
+    <h1 id="operator-title">Owner authentication and fictional case review</h1>
+    <p>CYBER SURAKSHA 2.0 is an independently operated cybersecurity awareness service, not a government or police complaint portal. Do not submit real victim information.</p>
+  </div>
+  <div id="operator-status" role="status" aria-live="polite" class="account-service-status">Checking private operator availability.</div>
+  <div class="surface auth-panel">
+    <h2>Separate administrator sign-in</h2>
+    <p>A registered and approved owner must prove a fresh Google identity, then a separate website password and authenticator code. An email address alone never grants privileges.</p>
+    <form id="operator-credentials" class="stack-form" method="post" action="#">
+      <label class="field-label" for="operator-mode">Action</label>
+      <select id="operator-mode">
+        <option value="login">Login with MFA</option>
+        <option value="begin">Begin approved enrollment</option>
+        <option value="finish">Finish authenticator enrollment</option>
+      </select>
+      <label class="field-label" for="operator-approval">Private owner approval key (enrollment only)</label>
+      <input id="operator-approval" name="approvalKey" type="password" autocomplete="off" maxlength="512">
+      <label class="field-label" for="operator-password">Separate CYBER SURAKSHA administrator password</label>
+      <input id="operator-password" name="password" type="password" autocomplete="off" minlength="12" maxlength="128">
+      <label class="field-label" for="operator-confirm">Confirm password (begin enrollment only)</label>
+      <input id="operator-confirm" name="confirmPassword" type="password" autocomplete="off" minlength="12" maxlength="128">
+      <label class="field-label" for="operator-code">Six-digit authenticator code (login / finish only)</label>
+      <input id="operator-code" name="code" type="password" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6">
+      <button id="operator-challenge" class="button button-dark" type="submit">Start Google verification</button>
+    </form>
+    <div id="operator-google-button" aria-label="Verified Google owner sign-in"></div>
+    <p class="field-hint">Never use your Gmail password here. No login token or authenticator seed is saved in local storage.</p>
+  </div>
+  <section id="operator-enrollment" class="surface auth-panel" hidden>
+    <h2>One-time authenticator enrollment</h2>
+    <p>Enter the seed manually into your authenticator app. Do not screenshot, copy to a public document, or share this information.</p>
+    <p>Authenticator seed: <code id="operator-totp-seed"></code></p>
+    <p>Authenticator URI: <code id="operator-totp-uri"></code></p>
+    <p>After adding the account in your authenticator, choose Finish enrollment and start a fresh Google verification.</p>
+  </section>
+  <section id="operator-dashboard" class="workspace" hidden>
+    <h2>Authorized fictional case administration</h2>
+    <p>Short-lived owner session. Every case change requires fresh server-side MFA and is audited. Only fictional records may be processed.</p>
+    <div class="button-row">
+      <button class="button button-secondary" type="button" id="operator-refresh">Refresh cases</button>
+      <button class="button button-secondary" type="button" id="operator-logout">Sign out</button>
+    </div>
+    <div id="operator-cases" class="records-region"></div>
+  </section>
+</section>
+{% endblock %}
