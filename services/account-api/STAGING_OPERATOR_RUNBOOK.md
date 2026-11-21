@@ -101,8 +101,8 @@ to commit. Never put values in command-line arguments, CI outputs or issues.
 | STAGING_OPERATOR_ENABLED | Start at 0; set 1 only after approved readiness |
 | STAGING_BRANCH_ID | br-sweet-band-azhwai4r, for the operator Function only |
 | STAGING_OWNER_GOOGLE_SUB | Verified, independently approved stable Google subject, not a citizen |
-| STAGING_OWNER_EMAIL | Verified Google email of the authorized owner |
-| ADMIN_EMAIL | Must exactly equal STAGING_OWNER_EMAIL; match the staging citizen Function |
+| STAGING_OWNER_EMAIL | Privately approved owner email: ramakrishnajatoth2007@gmail.com; matching email alone is not identity proof |
+| ADMIN_EMAIL | Must exactly equal STAGING_OWNER_EMAIL: ramakrishnajatoth2007@gmail.com; never auto-promote a citizen |
 | STAGING_OPERATOR_APPROVAL_KEY | Fresh independently generated 48+ character high-entropy staging-only credential |
 | STAGING_OPERATOR_TOTP_KEY | Fresh random 48+ character operator-only encryption key; never the citizen or production key |
 | STAGING_OPERATOR_SESSION_KEY | Fresh random 48+ character operator-only bearer signing key; never the citizen or production key |
@@ -209,3 +209,31 @@ the verified Google owner subject, independent review, runtime secrets,
 database migration authorization, separate Function deployment approval,
 live browser tests and real MFA enrollment are pending. Do not bypass these
 gates. No production or Render changes have been authorized.
+
+## Source-only test workspace user interface
+
+A separate `web/pages/source/templates/operator.html` and private
+`web/pages/source/static/js/operator.js` implement the Google ID token,
+fresh challenge/nonce, owner approval, password, authenticator enrollment,
+MFA login, revocable memory-only bearer, fictional case list/notes/status
+updates and logout. The page is emitted **only** when building a
+`test_workspace=true` site; it is not linked from the public production
+navigation and should not be activated without approval.
+
+The branch-only URL (after a reviewed Pages test-workspace build and publish)
+would be `/cyber-suraksha-2.0/google-test/en/operator.html`.
+The Function slug reserved in source configuration is `csownerstage`;
+there is NO deployed operator Function or verified owner at the time this
+runbook was edited. Its API is configured only in
+`web/pages/config/google-test.json`. Do not navigate to the page with real
+secrets until the approved Function, identity pin, CORS, CSP and UI have all
+been independently reviewed. An old owner-password interface at
+`account.html#admin` is not a substitute.
+
+The owner Google subject **must** be obtained by a real owner-controlled
+Google sign-in and separately approved, not entered from an email guess or
+untrusted screenshot. The test workflow never substitutes simulated Google
+identity for enrollment. The operator remains disabled by default.
+
+No live migration, Function deployment, public Pages deployment, admin
+provisioning, or production change is authorized by this PR.
