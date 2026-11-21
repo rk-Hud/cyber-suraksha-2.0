@@ -8,7 +8,7 @@
   <nav id="account-navigation" class="workspace-nav" aria-label="{{ t('nav_account') }}">
     <button type="button" data-account-view="login">{{ t('sign_in') }}</button><button type="button" data-account-view="register">{{ t('create_account') }}</button>{% if test_workspace and operator_api_url %}<a class="workspace-link" href="{{ base_path }}/{{ lang }}/operator.html">{{ t('admin_sign_in') }} →</a>{% else %}<button type="button" data-account-view="admin-login">{{ t('admin_sign_in') }}</button>{% endif %}
   </nav>
-  <p class="account-owner-entry" {% if not test_workspace or not operator_api_url %}hidden{% endif %}><strong>{{ t('admin_sign_in') }}:</strong> {{ t('portal_admin_body') }} <a href="{{ base_path }}/{{ lang }}/operator.html">{{ t('admin_sign_in') }} →</a></p>
+  {% if test_workspace and operator_api_url %}<p class="account-owner-entry"><strong>{{ t('admin_sign_in') }}:</strong> {{ t('portal_admin_body') }} <a href="{{ base_path }}/{{ lang }}/operator.html">{{ t('admin_sign_in') }} →</a></p>{% endif %}
   <div id="signed-in-identity" class="account-identity" hidden></div>
 
   <section data-account-panel="login" class="auth-layout">
