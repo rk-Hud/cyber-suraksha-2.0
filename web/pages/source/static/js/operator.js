@@ -124,9 +124,14 @@
   async function loadCases() {
     if (!session.bearer) return;
     try {
-      const list = await call('cases', undefined, session.bearer);
+      const query = new URLSearchParams({
+        page: String(workspace.cases),
+        q: workspace.caseSearch,
+        status: workspace.caseStatus,
+      });
+      const list = await call('workspace/cases?' + query.toString(), undefined, session.bearer);
       casesHost.replaceChildren();
-      for (const item of list.cases) {
+      for (const item of list.items) {
         const article = document.createElement('article');
         article.className = 'surface auth-panel';
         const title = document.createElement('h3');
@@ -157,7 +162,10 @@
         });
         article.append(title,state,form); casesHost.append(article);
       }
-      if (!list.cases.length) message('No fictional cases are registered.');
+      if (!list.items.length) {
+        casesHost.append(element('p', 'No matching fictional cases.', 'field-hint'));
+      }
+      paginate('cases', list, loadCases);
     } catch(error) { message('Case list denied: ' + error.message); }
   }
 
@@ -165,25 +173,25 @@
   // backend endpoints; no citizen credentials, operator tokens or identities
   // are read from the URL, web storage or untrusted markup.
   const workspace = { active: 'overview', users: 1, events: 1, sessions: 1,
-    audit: 1, search: '', type: 'all', userCasePage: 1 };
+    audit: 1, cases: 1, search: '', type: 'all', caseSearch: '', caseStatus: 'all', userCasePage: 1 };
   const panes = [...document.querySelectorAll('[data-operator-panel]')];
   const tabs = [...document.querySelectorAll('[data-operator-tab]')];
   const lang = document.documentElement.lang;
   const words = {
     en: { none: 'No records available', previous: 'Previous', next: 'Next', page: 'Page',
-      loadError: 'Owner workspace request denied', fields: ['Name','Email','Role','Registered',
+      loadError: 'Owner workspace request denied', fields: ['Account ID','Name','Email','Role','Registered',
         'Last login','Last failed login','Last logout','Method','Current sessions','Cases / latest status / references','Account'],
       activity: ['Time (IST)','Email (claimed if failed)','Event','Result','Detail'],
       sessions: ['Account','Service','Started (IST)','Expires (IST)','State'],
       audits: ['Time (IST)','Actor','Action','Record'], details: 'Show all case references' },
     hi: { none: 'कोई रिकॉर्ड नहीं', previous: 'पिछला', next: 'अगला', page: 'पृष्ठ',
-      loadError: 'मालिक कार्यक्षेत्र अनुरोध अस्वीकृत', fields: ['नाम','ईमेल','भूमिका','पंजीकरण',
+      loadError: 'मालिक कार्यक्षेत्र अनुरोध अस्वीकृत', fields: ['खाता आईडी','नाम','ईमेल','भूमिका','पंजीकरण',
         'अंतिम लॉगिन','अंतिम विफल लॉगिन','अंतिम लॉगआउट','विधि','वर्तमान सत्र','मामले / स्थिति / संदर्भ','खाता'],
       activity: ['समय (IST)','ईमेल (विफल होने पर दावा)','घटना','परिणाम','विवरण'],
       sessions: ['खाता','सेवा','आरंभ (IST)','समाप्ति (IST)','स्थिति'],
       audits: ['समय (IST)','कर्ता','क्रिया','रिकॉर्ड'], details: 'सभी मामले संदर्भ देखें' },
     te: { none: 'రికార్డులు లేవు', previous: 'మునుపటి', next: 'తర్వాత', page: 'పేజీ',
-      loadError: 'యజమాని వర్క్‌స్పేస్ అభ్యర్థన తిరస్కరించబడింది', fields: ['పేరు','ఇమెయిల్','పాత్ర','నమోదు',
+      loadError: 'యజమాని వర్క్‌స్పేస్ అభ్యర్థన తిరస్కరించబడింది', fields: ['ఖాతా ఐడీ','పేరు','ఇమెయిల్','పాత్ర','నమోదు',
         'చివరి లాగిన్','చివరి విఫల లాగిన్','చివరి లాగౌట్','పద్ధతి','ప్రస్తుత సెషన్‌లు','కేసులు / స్థితి / సూచనలు','ఖాతా'],
       activity: ['సమయం (IST)','ఇమెయిల్ (విఫలమైతే ప్రకటించినది)','ఈవెంట్','ఫలితం','వివరం'],
       sessions: ['ఖాతా','సేవ','ప్రారంభం (IST)','ముగింపు (IST)','స్థితి'],
@@ -301,7 +309,7 @@
             void loadUserCaseRefs(user, region).catch(error => message(label.loadError + ': ' + error.message));
           });
           holder.append(details);
-          return [user.name, user.email, user.role, dateIST(user.created_at),
+          return [user.id, user.name, user.email, user.role, dateIST(user.created_at),
             dateIST(user.last_login_at), dateIST(user.last_failed_login_at),
             dateIST(user.last_logout_at), user.authentication_method,
             Number(user.citizen_active_sessions) + Number(user.operator_active_sessions),
@@ -367,6 +375,14 @@
     void loadOwnerPane('events');
   });
 
+  document.getElementById('operator-case-filters').addEventListener('submit', event => {
+    event.preventDefault();
+    workspace.caseSearch = document.getElementById('operator-case-search').value.trim();
+    workspace.caseStatus = document.getElementById('operator-case-status').value;
+    workspace.cases = 1;
+    void loadOwnerPane('cases');
+  });
+
   credentials.addEventListener('submit', event => { event.preventDefault(); void beginChallenge(); });
   modeSelect.addEventListener('change', () => {
     resetProof(); message('Choose Start Google verification to begin a new challenge.');
@@ -377,8 +393,14 @@
     dashboard.hidden = true; casesHost.replaceChildren(); resetProof();
     document.querySelectorAll('.owner-scroll').forEach(x => x.replaceChildren());
     document.getElementById('operator-summary').replaceChildren();
-    if (token) { try { await call('logout', {}, token); } catch { /* token is discarded regardless */ } }
-    message('Signed out. Page memory cleared.');
+    let confirmedByServer = false;
+    if (token) {
+      try { await call('logout', {}, token); confirmedByServer = true; }
+      catch { /* Bearer is discarded locally; server revocation cannot be inferred. */ }
+    }
+    message(confirmedByServer
+      ? 'Server confirmed explicit sign-out. Local session cleared.'
+      : 'Local session cleared. Server revocation was not confirmed; an unexpired session may remain valid.');
   });
   window.addEventListener('pagehide', () => {
     session.bearer = ''; session.secret = ''; session.provisionId = '';
