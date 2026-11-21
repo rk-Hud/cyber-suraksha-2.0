@@ -31,7 +31,7 @@
   {% if is_operator %}<script src="{{ url_for('static', filename='js/operator.js') }}" defer></script>{% endif %}
 </head>
 <body id="top">
-  {% if test_workspace %}<aside class="test-workspace-note" role="note"><div class="shell"><strong>{{ t('test_workspace_title') }}</strong><p>{{ t('test_workspace_body') }}</p></div></aside>{% endif %}
+  {% if test_workspace %}<aside class="test-workspace-note" role="note"><div class="shell"><strong>{{ t('test_workspace_title') }}</strong><span>{{ t('test_workspace_body') }}</span></div></aside>{% endif %}
   <a class="skip-link" href="#main">{{ t('skip_content') }}</a>
   <div class="service-strip">
     <div class="shell service-strip-inner">
@@ -78,7 +78,7 @@
   <footer class="site-footer">
     <div class="shell footer-main">
       <div><strong class="footer-brand">CYBER SURAKSHA 2.0</strong><p>{{ t('footer_mission') }}</p></div>
-      <div class="footer-links"><a href="{{ base_path }}/{{ lang }}/privacy.html">{{ t('privacy_policy') }}</a><a href="{{ base_path }}/{{ lang }}/terms.html">{{ t('service_terms') }}</a><a href="{{ base_path }}/SECURITY.md">{{ t('security_policy') }}</a><a href="{{ base_path }}/humans.txt">{{ t('humans_link') }}</a><a href="{{ base_path }}/{{ lang }}/account.html#admin">{{ t('admin_sign_in') }}</a><a href="#top">{{ t('back_top') }} ↑</a></div>
+      <div class="footer-links"><a href="{{ base_path }}/{{ lang }}/privacy.html">{{ t('privacy_policy') }}</a><a href="{{ base_path }}/{{ lang }}/terms.html">{{ t('service_terms') }}</a><a href="{{ base_path }}/SECURITY.md">{{ t('security_policy') }}</a><a href="{{ base_path }}/humans.txt">{{ t('humans_link') }}</a>{% if test_workspace and operator_api_url %}<a href="{{ base_path }}/{{ lang }}/operator.html">{{ t('admin_sign_in') }}</a>{% else %}<a href="{{ base_path }}/{{ lang }}/account.html#admin">{{ t('admin_sign_in') }}</a>{% endif %}<a href="#top">{{ t('back_top') }} ↑</a></div>
     </div>
     <div class="shell footer-legal">
       <p>© {{ year }} Jatoth Ramakrishna. {{ t('footer_rights') }} {{ t('footer_ownership') }}</p>
