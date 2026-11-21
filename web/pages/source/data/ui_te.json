@@ -468,6 +468,8 @@
   "unified_dash_sessions": "సెషన్‌లు",
   "unified_dash_cases": "కల్పిత కేసులు",
   "unified_dash_audit": "ఆడిట్ చరిత్ర",
+  "unified_dash_case_search": "కల్పిత కేసులను వెతకండి",
+  "unified_dash_case_search_placeholder": "సూచన సంఖ్య లేదా విషయం",
   "unified_dash_search": "వినియోగదారులను వెతకండి",
   "unified_dash_search_placeholder": "పేరు లేదా ఇమెయిల్ వెతకండి",
   "unified_dash_filter": "కార్యాచరణ ఫిల్టర్",
