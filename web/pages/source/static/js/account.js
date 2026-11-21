@@ -193,6 +193,10 @@
     app?.querySelectorAll('[data-email-required] button[type="submit"]').forEach(button => { button.disabled = !state.features.emailOtp; });
     app?.querySelectorAll('[data-registration-required] button[type="submit"]').forEach(button => { button.disabled = !state.features.registration || !state.features.emailOtp; });
   }
+  const operatorUrl = app?.dataset.operatorUrl || '';
+  const operatorDestination = operatorUrl && /^\/cyber-suraksha-2\.0\/google-test\/(?:en|hi|te)\/operator\.html$/.test(operatorUrl)
+    ? operatorUrl : '';
+
   function updateNavigation() {
     if (!app) return;
     const nav = document.getElementById('account-navigation'); nav.replaceChildren();
@@ -201,6 +205,15 @@
     for (const [view, label] of items) {
       const button = action(t(label), () => showView(view), 'workspace-link');
       button.dataset.accountView = view; nav.append(button);
+    }
+    if (!state.user && operatorDestination) {
+      const old = nav.querySelector('[data-account-view="admin-login"]');
+      if (old) old.remove();
+      const ownerLink = document.createElement('a');
+      ownerLink.href = operatorDestination;
+      ownerLink.className = 'workspace-link';
+      ownerLink.textContent = t('admin_sign_in') + ' →';
+      nav.append(ownerLink);
     }
     if (state.user) nav.append(action(t('sign_out'), () => task(async () => {
       try { await client.request('/api/v1/auth/logout', 'POST', {}, { authenticated: true }); }
@@ -214,6 +227,10 @@
   root.addEventListener('pagehide', () => { clearSensitive(); showView('login'); });
   async function showView(name, { load = true } = {}) {
     if (!app) return;
+    if (name === 'admin-login' && operatorDestination) {
+      window.location.assign(operatorDestination);
+      return;
+    }
     dismiss();
     const adminLogin = name === 'admin-login';
     if (adminLogin) name = 'login';
