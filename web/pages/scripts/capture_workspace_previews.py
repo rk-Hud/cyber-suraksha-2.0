@@ -82,13 +82,16 @@ def capture(source: pathlib.Path, dest: pathlib.Path):
             server.server_close()
 
     (dest / "README.md").write_text(
-        "# CYBER SURAKSHA 2.0 — isolated source preview evidence\\n\\n"
-        "Generated from the staging static-site build in disposable GitHub Actions.\\n"
-        "12 authentic browser screenshots: EN/HI/TE account and operator sign-in at "
-        "1366×768 and 390×844.\\n\\n"
-        "**No live API request was permitted, no authentication was performed, "
-        "and no owner dashboard personal data was accessed.** These screenshots "
-        "are not proof of successful Google/TOTP or deployment.\\n",
+        """# CYBER SURAKSHA 2.0 — isolated source preview evidence
+
+Generated from the staging static-site build in disposable GitHub Actions.
+12 authentic browser screenshots: EN/HI/TE account and operator sign-in at
+1366×768 and 390×844.
+
+**No live API request was permitted, no authentication was performed, and no
+owner dashboard personal data was accessed.** These screenshots are not proof
+of successful Google/TOTP or deployment.
+""",
         encoding="utf-8",
     )
 
