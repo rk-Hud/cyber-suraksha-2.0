@@ -1,5 +1,8 @@
 # CYBER SURAKSHA 2.0 — Unified Citizen / Owner Workspace (staging source)
 
+**Important:** This is an older, **unapproved** reference release recipe from PR #12. For current review branch status, owner enable/disable semantics and immutable screenshot/rollback checks, follow `web/pages/WORKSPACE_HARDENING_REVIEW.md` and `web/pages/WORKSPACE_SECURITY_REVIEW_20261121.md`. Never run the recipe before an independently verified isolated backup restore and new staging-only approval.
+
+
 **Status: source review only. NOT DEPLOYED.** This PR is stacked onto staging operator PR #10.
 It does not authorize Neon deployment, SQL migration, public release, or any cost-bearing service.
 
@@ -132,7 +135,7 @@ record, and explicit release approval. The following is limited to the
 
   $approval = Read-Host "Type RELEASE-STAGING-ONLY if an independently reviewed restorable backup and deployment approval exist"
   if ($approval -cne "RELEASE-STAGING-ONLY") { throw "STOP: Not approved" }
-  if (Test-Path $output -or Test-Path $pagesRepo) {
+  if ((Test-Path $output) -or (Test-Path $pagesRepo)) {
     throw "STOP: A release path already exists. No overwrites allowed."
   }
   if (-not (Test-Path $accountApi) -or -not (Test-Path $pagesSource)) {
