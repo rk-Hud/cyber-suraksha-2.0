@@ -95,11 +95,12 @@ export function createStagingOperator(options = {}) {
       const requested = (c.req.header('Access-Control-Request-Headers') || '').toLowerCase()
         .split(',').map(x => x.trim()).filter(Boolean);
       const method = c.req.header('Access-Control-Request-Method') || '';
-      if (!origin || method !== 'POST' || requested.some(x => x !== 'content-type')) {
+      if (!origin || !['POST', 'GET', 'PATCH'].includes(method)
+        || requested.some(x => !['content-type', 'authorization'].includes(x))) {
         return failure(c, 'operator_forbidden', 403);
       }
-      c.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
-      c.header('Access-Control-Allow-Headers', 'Content-Type');
+      c.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
+      c.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
       return c.body(null, 204);
     }
     await next();
