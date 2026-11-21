@@ -371,6 +371,1083 @@ export function createStagingOperator(options = {}) {
       || Number(row.mfa_at) + 600 < now()) reject('operator_unauthorized', 401);
     return row;
   }
+
+  // Dedicated operator bearer; never reuse citizen sessions for owner visibility.
+  function pageRequest(c) {
+    const raw=c.req.query('page')||'1';
+    if (!/^[1-9][0-9]{0,3}$/.test(raw)) reject('operator_invalid',400);
+    const term=(c.req.query('q')||'').trim();
+    if (term.length>100 || /[\u0000-\u001f\u007f]/.test(term)) reject('operator_invalid',400);
+    const page=Number(raw);
+    return { page,limit:20,offset:(page-1)*20,term };
+  }
+  function searchWhere(term,columns,params) {
+    if (!term) return '';
+    params.push('%'+term.toLowerCase().replace(/[\\%_]/g,'\\  const transitions = {')+'%');
+    return ' WHERE ('+columns.map(column =>
+      'LOWER('+column+') LIKE 
+    pending: ['in_review', 'closed'],
+    in_review: ['awaiting_info', 'resolved', 'closed'],
+    awaiting_info: ['in_review', 'resolved', 'closed'],
+    resolved: ['closed', 'in_review'],
+    closed: [],
+  };
+  app.get('/operator/v1/summary', async c => {
+    await operatorAuth(c);
+    const rows = (await pool.query(
+      'SELECT status,count(*)::int AS n FROM portal_complaints GROUP BY status')).rows;
+    const counts = Object.fromEntries(rows.map(x => [x.status, x.n]));
+    const [citizens,citizenSessions,ownerSessions]=await Promise.all([
+      pool.query("SELECT count(*)::int AS n FROM portal_users WHERE role='citizen'"),
+      pool.query("SELECT count(*)::int AS n FROM portal_sessions WHERE authenticated_at IS NOT NULL AND expires_at>$1",[now()]),
+      pool.query('SELECT count(*)::int AS n FROM cs_stage_operator_sessions WHERE revoked_at IS NULL AND expires_at>$1',[now()])
+    ]);
+    return safe(c,{counts,citizens:citizens.rows[0].n,
+      activeSessions:citizenSessions.rows[0].n+ownerSessions.rows[0].n,
+      scope:'fictional-staging-only'});
+  });
+
+  app.get('/operator/v1/users',async c=>{
+    await operatorAuth(c);
+    const page=pageRequest(c),params=[];
+    const where=searchWhere(page.term,['u.email','u.name'],params);
+    const columns="SELECT u.id,u.name,u.email,u.role,u.active,u.version,u.created_at,u.verified_at, "
+      +"(SELECT count(*)::int FROM portal_complaints p WHERE p.user_id=u.id) AS case_count, "
+      +"(SELECT p.status FROM portal_complaints p WHERE p.user_id=u.id ORDER BY p.updated_at DESC,p.id DESC LIMIT 1) AS latest_case_status, "
+      +"(SELECT max(l.created_at) FROM portal_login_events l WHERE l.user_id=u.id AND l.success=true "
+      +"AND l.reason IN ('google_verified_oidc','password_and_email_otp','staging_google_password_totp')) AS last_login_at, "
+      +"(SELECT max(l.created_at) FROM portal_login_events l WHERE l.user_id=u.id AND l.success=false) AS last_failed_at, "
+      +"(SELECT max(l.created_at) FROM portal_login_events l WHERE l.user_id=u.id "
+      +"AND l.reason IN ('citizen_explicit_logout','staging_operator_explicit_logout')) AS last_logout_at, "
+      +"(SELECT count(*)::int FROM portal_sessions s WHERE s.user_id=u.id AND s.authenticated_at IS NOT NULL "
+      +"AND s.expires_at>EXTRACT(EPOCH FROM now())::bigint) AS citizen_active_sessions, "
+      +"(SELECT count(*)::int FROM cs_stage_operator_sessions s WHERE s.owner_id=u.id AND s.revoked_at IS NULL "
+      +"AND s.expires_at>EXTRACT(EPOCH FROM now())::bigint) AS operator_active_sessions "
+      +"FROM portal_users u";
+    const result=await queryPage('SELECT count(*)::int AS total FROM portal_users u'+where,
+      columns+where+' ORDER BY u.created_at DESC,u.id DESC LIMIT 
+    await operatorAuth(c);
+    const cases = (await pool.query(
+      'SELECT id,reference,subject,category,status,version,created_at,updated_at '
+      + 'FROM portal_complaints ORDER BY updated_at DESC LIMIT 50')).rows;
+    return safe(c, { cases });
+  });
+  app.get('/operator/v1/cases/:id', async c => {
+    await operatorAuth(c);
+    if (!identifier(c.req.param('id'))) reject('operator_invalid', 400);
+    const row = (await pool.query(
+      'SELECT id,reference,subject,category,details,status,version,created_at,updated_at '
+      + 'FROM portal_complaints WHERE id=$1', [c.req.param('id')])).rows[0];
+    if (!row) reject('operator_not_found', 404);
+    const events = (await pool.query(
+      'SELECT sequence,author_role,author_name,message,old_status,new_status,created_at '
+      + 'FROM portal_case_events WHERE complaint_id=$1 ORDER BY sequence', [row.id])).rows;
+    return safe(c, { case: row, events });
+  });
+  app.patch('/operator/v1/cases/:id', async c => {
+    ready();
+    const value = await body(c, ['status', 'message', 'version']);
+    if (!identifier(c.req.param('id'))
+      || !Object.prototype.hasOwnProperty.call(transitions, value.status)
+      || !Number.isSafeInteger(value.version) || value.version < 1
+      || typeof value.message !== 'string' || value.message.length < 3
+      || value.message.length > 3000) reject('operator_invalid', 400);
+    await rate('case-update', 30, 3600);
+    const updated = await transaction(pool, async db => {
+      const actor = await operatorAuth(c, db);
+      const row = (await db.query(
+        'SELECT * FROM portal_complaints WHERE id=$1 FOR UPDATE',
+        [c.req.param('id')])).rows[0];
+      if (!row) reject('operator_not_found', 404);
+      if (row.version !== value.version) reject('operator_version_conflict', 409);
+      if (value.status !== row.status
+        && !transitions[row.status]?.includes(value.status)) reject('operator_invalid', 400);
+      const former = row.status, stamp = now(), nextVersion = row.version + 1;
+      await db.query(
+        'UPDATE portal_complaints SET status=$1,version=$2,updated_at=$3 WHERE id=$4',
+        [value.status, nextVersion, stamp, row.id]);
+      await db.query(
+        'INSERT INTO portal_case_events(id,complaint_id,actor_id,sequence,author_role,author_name,message,old_status,new_status,created_at) '
+        + "VALUES($1,$2,$3,$4,'owner',$5,$6,$7,$8,$9)",
+        [newId(), row.id, actor.owner_id, nextVersion, 'Staging Owner',
+          value.message, former, value.status, stamp]);
+      await audit(db, actor.owner_id, 'staging.owner.case_updated', row.id);
+      return { reference: row.reference, status: value.status, version: nextVersion };
+    });
+    return safe(c, { case: updated });
+  });
+  app.post('/operator/v1/logout', async c => {
+    await body(c, []);
+    const actor = await operatorAuth(c);
+    await transaction(pool,async db=>{
+      await db.query('UPDATE cs_stage_operator_sessions SET revoked_at=$1 WHERE id=$2 AND revoked_at IS NULL',
+        [now(),actor.session_id]);
+      await db.query('INSERT INTO portal_login_events(id,user_id,email,name,success,reason,ip_label,user_agent,created_at) '
+        +'VALUES($1,$2,$3,$4,true,$5,$6,$7,$8)',
+        [newId(),actor.owner_id,actor.email,'Staging Owner','staging_operator_explicit_logout','unavailable','',now()]);
+      await audit(db,actor.owner_id,'staging.owner.logout',actor.owner_id);
+    });
+    return safe(c, { signedOut: true });
+  });
+
+  return { app, pool, settings };
+}
++params.length+" ESCAPE '\\'").join(' OR ')+')';
+  }
+  async function queryPage(countSql,selectSql,params,page) {
+    const total=Number((await pool.query(countSql,params)).rows[0].total);
+    const records=(await pool.query(selectSql,[...params,page.limit,page.offset])).rows;
+    return {records,total,page:page.page,pageSize:page.limit};
+  }
+
+  const transitions = {
+    pending: ['in_review', 'closed'],
+    in_review: ['awaiting_info', 'resolved', 'closed'],
+    awaiting_info: ['in_review', 'resolved', 'closed'],
+    resolved: ['closed', 'in_review'],
+    closed: [],
+  };
+  app.get('/operator/v1/summary', async c => {
+    await operatorAuth(c);
+    const rows = (await pool.query(
+      'SELECT status,count(*)::int AS n FROM portal_complaints GROUP BY status')).rows;
+    const counts = Object.fromEntries(rows.map(x => [x.status, x.n]));
+    return safe(c, { counts, scope: 'fictional-staging-only' });
+  });
+  app.get('/operator/v1/cases', async c => {
+    await operatorAuth(c);
+    const cases = (await pool.query(
+      'SELECT id,reference,subject,category,status,version,created_at,updated_at '
+      + 'FROM portal_complaints ORDER BY updated_at DESC LIMIT 50')).rows;
+    return safe(c, { cases });
+  });
+  app.get('/operator/v1/cases/:id', async c => {
+    await operatorAuth(c);
+    if (!identifier(c.req.param('id'))) reject('operator_invalid', 400);
+    const row = (await pool.query(
+      'SELECT id,reference,subject,category,details,status,version,created_at,updated_at '
+      + 'FROM portal_complaints WHERE id=$1', [c.req.param('id')])).rows[0];
+    if (!row) reject('operator_not_found', 404);
+    const events = (await pool.query(
+      'SELECT sequence,author_role,author_name,message,old_status,new_status,created_at '
+      + 'FROM portal_case_events WHERE complaint_id=$1 ORDER BY sequence', [row.id])).rows;
+    return safe(c, { case: row, events });
+  });
+  app.patch('/operator/v1/cases/:id', async c => {
+    ready();
+    const value = await body(c, ['status', 'message', 'version']);
+    if (!identifier(c.req.param('id'))
+      || !Object.prototype.hasOwnProperty.call(transitions, value.status)
+      || !Number.isSafeInteger(value.version) || value.version < 1
+      || typeof value.message !== 'string' || value.message.length < 3
+      || value.message.length > 3000) reject('operator_invalid', 400);
+    await rate('case-update', 30, 3600);
+    const updated = await transaction(pool, async db => {
+      const actor = await operatorAuth(c, db);
+      const row = (await db.query(
+        'SELECT * FROM portal_complaints WHERE id=$1 FOR UPDATE',
+        [c.req.param('id')])).rows[0];
+      if (!row) reject('operator_not_found', 404);
+      if (row.version !== value.version) reject('operator_version_conflict', 409);
+      if (value.status !== row.status
+        && !transitions[row.status]?.includes(value.status)) reject('operator_invalid', 400);
+      const former = row.status, stamp = now(), nextVersion = row.version + 1;
+      await db.query(
+        'UPDATE portal_complaints SET status=$1,version=$2,updated_at=$3 WHERE id=$4',
+        [value.status, nextVersion, stamp, row.id]);
+      await db.query(
+        'INSERT INTO portal_case_events(id,complaint_id,actor_id,sequence,author_role,author_name,message,old_status,new_status,created_at) '
+        + "VALUES($1,$2,$3,$4,'owner',$5,$6,$7,$8,$9)",
+        [newId(), row.id, actor.owner_id, nextVersion, 'Staging Owner',
+          value.message, former, value.status, stamp]);
+      await audit(db, actor.owner_id, 'staging.owner.case_updated', row.id);
+      return { reference: row.reference, status: value.status, version: nextVersion };
+    });
+    return safe(c, { case: updated });
+  });
+  app.post('/operator/v1/logout', async c => {
+    await body(c, []);
+    const actor = await operatorAuth(c);
+    await pool.query(
+      'UPDATE cs_stage_operator_sessions SET revoked_at=$1 WHERE id=$2 AND revoked_at IS NULL',
+      [now(), actor.session_id]);
+    return safe(c, { signedOut: true });
+  });
+
+  return { app, pool, settings };
+}
++(params.length+1)
+        +' OFFSET 
+    await operatorAuth(c);
+    const cases = (await pool.query(
+      'SELECT id,reference,subject,category,status,version,created_at,updated_at '
+      + 'FROM portal_complaints ORDER BY updated_at DESC LIMIT 50')).rows;
+    return safe(c, { cases });
+  });
+  app.get('/operator/v1/cases/:id', async c => {
+    await operatorAuth(c);
+    if (!identifier(c.req.param('id'))) reject('operator_invalid', 400);
+    const row = (await pool.query(
+      'SELECT id,reference,subject,category,details,status,version,created_at,updated_at '
+      + 'FROM portal_complaints WHERE id=$1', [c.req.param('id')])).rows[0];
+    if (!row) reject('operator_not_found', 404);
+    const events = (await pool.query(
+      'SELECT sequence,author_role,author_name,message,old_status,new_status,created_at '
+      + 'FROM portal_case_events WHERE complaint_id=$1 ORDER BY sequence', [row.id])).rows;
+    return safe(c, { case: row, events });
+  });
+  app.patch('/operator/v1/cases/:id', async c => {
+    ready();
+    const value = await body(c, ['status', 'message', 'version']);
+    if (!identifier(c.req.param('id'))
+      || !Object.prototype.hasOwnProperty.call(transitions, value.status)
+      || !Number.isSafeInteger(value.version) || value.version < 1
+      || typeof value.message !== 'string' || value.message.length < 3
+      || value.message.length > 3000) reject('operator_invalid', 400);
+    await rate('case-update', 30, 3600);
+    const updated = await transaction(pool, async db => {
+      const actor = await operatorAuth(c, db);
+      const row = (await db.query(
+        'SELECT * FROM portal_complaints WHERE id=$1 FOR UPDATE',
+        [c.req.param('id')])).rows[0];
+      if (!row) reject('operator_not_found', 404);
+      if (row.version !== value.version) reject('operator_version_conflict', 409);
+      if (value.status !== row.status
+        && !transitions[row.status]?.includes(value.status)) reject('operator_invalid', 400);
+      const former = row.status, stamp = now(), nextVersion = row.version + 1;
+      await db.query(
+        'UPDATE portal_complaints SET status=$1,version=$2,updated_at=$3 WHERE id=$4',
+        [value.status, nextVersion, stamp, row.id]);
+      await db.query(
+        'INSERT INTO portal_case_events(id,complaint_id,actor_id,sequence,author_role,author_name,message,old_status,new_status,created_at) '
+        + "VALUES($1,$2,$3,$4,'owner',$5,$6,$7,$8,$9)",
+        [newId(), row.id, actor.owner_id, nextVersion, 'Staging Owner',
+          value.message, former, value.status, stamp]);
+      await audit(db, actor.owner_id, 'staging.owner.case_updated', row.id);
+      return { reference: row.reference, status: value.status, version: nextVersion };
+    });
+    return safe(c, { case: updated });
+  });
+  app.post('/operator/v1/logout', async c => {
+    await body(c, []);
+    const actor = await operatorAuth(c);
+    await pool.query(
+      'UPDATE cs_stage_operator_sessions SET revoked_at=$1 WHERE id=$2 AND revoked_at IS NULL',
+      [now(), actor.session_id]);
+    return safe(c, { signedOut: true });
+  });
+
+  return { app, pool, settings };
+}
++params.length+" ESCAPE '\\'").join(' OR ')+')';
+  }
+  async function queryPage(countSql,selectSql,params,page) {
+    const total=Number((await pool.query(countSql,params)).rows[0].total);
+    const records=(await pool.query(selectSql,[...params,page.limit,page.offset])).rows;
+    return {records,total,page:page.page,pageSize:page.limit};
+  }
+
+  const transitions = {
+    pending: ['in_review', 'closed'],
+    in_review: ['awaiting_info', 'resolved', 'closed'],
+    awaiting_info: ['in_review', 'resolved', 'closed'],
+    resolved: ['closed', 'in_review'],
+    closed: [],
+  };
+  app.get('/operator/v1/summary', async c => {
+    await operatorAuth(c);
+    const rows = (await pool.query(
+      'SELECT status,count(*)::int AS n FROM portal_complaints GROUP BY status')).rows;
+    const counts = Object.fromEntries(rows.map(x => [x.status, x.n]));
+    return safe(c, { counts, scope: 'fictional-staging-only' });
+  });
+  app.get('/operator/v1/cases', async c => {
+    await operatorAuth(c);
+    const cases = (await pool.query(
+      'SELECT id,reference,subject,category,status,version,created_at,updated_at '
+      + 'FROM portal_complaints ORDER BY updated_at DESC LIMIT 50')).rows;
+    return safe(c, { cases });
+  });
+  app.get('/operator/v1/cases/:id', async c => {
+    await operatorAuth(c);
+    if (!identifier(c.req.param('id'))) reject('operator_invalid', 400);
+    const row = (await pool.query(
+      'SELECT id,reference,subject,category,details,status,version,created_at,updated_at '
+      + 'FROM portal_complaints WHERE id=$1', [c.req.param('id')])).rows[0];
+    if (!row) reject('operator_not_found', 404);
+    const events = (await pool.query(
+      'SELECT sequence,author_role,author_name,message,old_status,new_status,created_at '
+      + 'FROM portal_case_events WHERE complaint_id=$1 ORDER BY sequence', [row.id])).rows;
+    return safe(c, { case: row, events });
+  });
+  app.patch('/operator/v1/cases/:id', async c => {
+    ready();
+    const value = await body(c, ['status', 'message', 'version']);
+    if (!identifier(c.req.param('id'))
+      || !Object.prototype.hasOwnProperty.call(transitions, value.status)
+      || !Number.isSafeInteger(value.version) || value.version < 1
+      || typeof value.message !== 'string' || value.message.length < 3
+      || value.message.length > 3000) reject('operator_invalid', 400);
+    await rate('case-update', 30, 3600);
+    const updated = await transaction(pool, async db => {
+      const actor = await operatorAuth(c, db);
+      const row = (await db.query(
+        'SELECT * FROM portal_complaints WHERE id=$1 FOR UPDATE',
+        [c.req.param('id')])).rows[0];
+      if (!row) reject('operator_not_found', 404);
+      if (row.version !== value.version) reject('operator_version_conflict', 409);
+      if (value.status !== row.status
+        && !transitions[row.status]?.includes(value.status)) reject('operator_invalid', 400);
+      const former = row.status, stamp = now(), nextVersion = row.version + 1;
+      await db.query(
+        'UPDATE portal_complaints SET status=$1,version=$2,updated_at=$3 WHERE id=$4',
+        [value.status, nextVersion, stamp, row.id]);
+      await db.query(
+        'INSERT INTO portal_case_events(id,complaint_id,actor_id,sequence,author_role,author_name,message,old_status,new_status,created_at) '
+        + "VALUES($1,$2,$3,$4,'owner',$5,$6,$7,$8,$9)",
+        [newId(), row.id, actor.owner_id, nextVersion, 'Staging Owner',
+          value.message, former, value.status, stamp]);
+      await audit(db, actor.owner_id, 'staging.owner.case_updated', row.id);
+      return { reference: row.reference, status: value.status, version: nextVersion };
+    });
+    return safe(c, { case: updated });
+  });
+  app.post('/operator/v1/logout', async c => {
+    await body(c, []);
+    const actor = await operatorAuth(c);
+    await pool.query(
+      'UPDATE cs_stage_operator_sessions SET revoked_at=$1 WHERE id=$2 AND revoked_at IS NULL',
+      [now(), actor.session_id]);
+    return safe(c, { signedOut: true });
+  });
+
+  return { app, pool, settings };
+}
++(params.length+2),params,page);
+    return safe(c,{users:result.records,total:result.total,page:result.page,pageSize:result.pageSize});
+  });
+  app.get('/operator/v1/activity',async c=>{
+    await operatorAuth(c);
+    const page=pageRequest(c),params=[];
+    const where=searchWhere(page.term,['l.email','l.name'],params);
+    const result=await queryPage('SELECT count(*)::int AS total FROM portal_login_events l'+where,
+      'SELECT l.id,l.user_id,l.email,l.name,l.success,l.reason,l.created_at FROM portal_login_events l'
+      +where+' ORDER BY l.created_at DESC,l.id DESC LIMIT 
+    await operatorAuth(c);
+    const cases = (await pool.query(
+      'SELECT id,reference,subject,category,status,version,created_at,updated_at '
+      + 'FROM portal_complaints ORDER BY updated_at DESC LIMIT 50')).rows;
+    return safe(c, { cases });
+  });
+  app.get('/operator/v1/cases/:id', async c => {
+    await operatorAuth(c);
+    if (!identifier(c.req.param('id'))) reject('operator_invalid', 400);
+    const row = (await pool.query(
+      'SELECT id,reference,subject,category,details,status,version,created_at,updated_at '
+      + 'FROM portal_complaints WHERE id=$1', [c.req.param('id')])).rows[0];
+    if (!row) reject('operator_not_found', 404);
+    const events = (await pool.query(
+      'SELECT sequence,author_role,author_name,message,old_status,new_status,created_at '
+      + 'FROM portal_case_events WHERE complaint_id=$1 ORDER BY sequence', [row.id])).rows;
+    return safe(c, { case: row, events });
+  });
+  app.patch('/operator/v1/cases/:id', async c => {
+    ready();
+    const value = await body(c, ['status', 'message', 'version']);
+    if (!identifier(c.req.param('id'))
+      || !Object.prototype.hasOwnProperty.call(transitions, value.status)
+      || !Number.isSafeInteger(value.version) || value.version < 1
+      || typeof value.message !== 'string' || value.message.length < 3
+      || value.message.length > 3000) reject('operator_invalid', 400);
+    await rate('case-update', 30, 3600);
+    const updated = await transaction(pool, async db => {
+      const actor = await operatorAuth(c, db);
+      const row = (await db.query(
+        'SELECT * FROM portal_complaints WHERE id=$1 FOR UPDATE',
+        [c.req.param('id')])).rows[0];
+      if (!row) reject('operator_not_found', 404);
+      if (row.version !== value.version) reject('operator_version_conflict', 409);
+      if (value.status !== row.status
+        && !transitions[row.status]?.includes(value.status)) reject('operator_invalid', 400);
+      const former = row.status, stamp = now(), nextVersion = row.version + 1;
+      await db.query(
+        'UPDATE portal_complaints SET status=$1,version=$2,updated_at=$3 WHERE id=$4',
+        [value.status, nextVersion, stamp, row.id]);
+      await db.query(
+        'INSERT INTO portal_case_events(id,complaint_id,actor_id,sequence,author_role,author_name,message,old_status,new_status,created_at) '
+        + "VALUES($1,$2,$3,$4,'owner',$5,$6,$7,$8,$9)",
+        [newId(), row.id, actor.owner_id, nextVersion, 'Staging Owner',
+          value.message, former, value.status, stamp]);
+      await audit(db, actor.owner_id, 'staging.owner.case_updated', row.id);
+      return { reference: row.reference, status: value.status, version: nextVersion };
+    });
+    return safe(c, { case: updated });
+  });
+  app.post('/operator/v1/logout', async c => {
+    await body(c, []);
+    const actor = await operatorAuth(c);
+    await pool.query(
+      'UPDATE cs_stage_operator_sessions SET revoked_at=$1 WHERE id=$2 AND revoked_at IS NULL',
+      [now(), actor.session_id]);
+    return safe(c, { signedOut: true });
+  });
+
+  return { app, pool, settings };
+}
++params.length+" ESCAPE '\\'").join(' OR ')+')';
+  }
+  async function queryPage(countSql,selectSql,params,page) {
+    const total=Number((await pool.query(countSql,params)).rows[0].total);
+    const records=(await pool.query(selectSql,[...params,page.limit,page.offset])).rows;
+    return {records,total,page:page.page,pageSize:page.limit};
+  }
+
+  const transitions = {
+    pending: ['in_review', 'closed'],
+    in_review: ['awaiting_info', 'resolved', 'closed'],
+    awaiting_info: ['in_review', 'resolved', 'closed'],
+    resolved: ['closed', 'in_review'],
+    closed: [],
+  };
+  app.get('/operator/v1/summary', async c => {
+    await operatorAuth(c);
+    const rows = (await pool.query(
+      'SELECT status,count(*)::int AS n FROM portal_complaints GROUP BY status')).rows;
+    const counts = Object.fromEntries(rows.map(x => [x.status, x.n]));
+    return safe(c, { counts, scope: 'fictional-staging-only' });
+  });
+  app.get('/operator/v1/cases', async c => {
+    await operatorAuth(c);
+    const cases = (await pool.query(
+      'SELECT id,reference,subject,category,status,version,created_at,updated_at '
+      + 'FROM portal_complaints ORDER BY updated_at DESC LIMIT 50')).rows;
+    return safe(c, { cases });
+  });
+  app.get('/operator/v1/cases/:id', async c => {
+    await operatorAuth(c);
+    if (!identifier(c.req.param('id'))) reject('operator_invalid', 400);
+    const row = (await pool.query(
+      'SELECT id,reference,subject,category,details,status,version,created_at,updated_at '
+      + 'FROM portal_complaints WHERE id=$1', [c.req.param('id')])).rows[0];
+    if (!row) reject('operator_not_found', 404);
+    const events = (await pool.query(
+      'SELECT sequence,author_role,author_name,message,old_status,new_status,created_at '
+      + 'FROM portal_case_events WHERE complaint_id=$1 ORDER BY sequence', [row.id])).rows;
+    return safe(c, { case: row, events });
+  });
+  app.patch('/operator/v1/cases/:id', async c => {
+    ready();
+    const value = await body(c, ['status', 'message', 'version']);
+    if (!identifier(c.req.param('id'))
+      || !Object.prototype.hasOwnProperty.call(transitions, value.status)
+      || !Number.isSafeInteger(value.version) || value.version < 1
+      || typeof value.message !== 'string' || value.message.length < 3
+      || value.message.length > 3000) reject('operator_invalid', 400);
+    await rate('case-update', 30, 3600);
+    const updated = await transaction(pool, async db => {
+      const actor = await operatorAuth(c, db);
+      const row = (await db.query(
+        'SELECT * FROM portal_complaints WHERE id=$1 FOR UPDATE',
+        [c.req.param('id')])).rows[0];
+      if (!row) reject('operator_not_found', 404);
+      if (row.version !== value.version) reject('operator_version_conflict', 409);
+      if (value.status !== row.status
+        && !transitions[row.status]?.includes(value.status)) reject('operator_invalid', 400);
+      const former = row.status, stamp = now(), nextVersion = row.version + 1;
+      await db.query(
+        'UPDATE portal_complaints SET status=$1,version=$2,updated_at=$3 WHERE id=$4',
+        [value.status, nextVersion, stamp, row.id]);
+      await db.query(
+        'INSERT INTO portal_case_events(id,complaint_id,actor_id,sequence,author_role,author_name,message,old_status,new_status,created_at) '
+        + "VALUES($1,$2,$3,$4,'owner',$5,$6,$7,$8,$9)",
+        [newId(), row.id, actor.owner_id, nextVersion, 'Staging Owner',
+          value.message, former, value.status, stamp]);
+      await audit(db, actor.owner_id, 'staging.owner.case_updated', row.id);
+      return { reference: row.reference, status: value.status, version: nextVersion };
+    });
+    return safe(c, { case: updated });
+  });
+  app.post('/operator/v1/logout', async c => {
+    await body(c, []);
+    const actor = await operatorAuth(c);
+    await pool.query(
+      'UPDATE cs_stage_operator_sessions SET revoked_at=$1 WHERE id=$2 AND revoked_at IS NULL',
+      [now(), actor.session_id]);
+    return safe(c, { signedOut: true });
+  });
+
+  return { app, pool, settings };
+}
++(params.length+1)
+      +' OFFSET 
+    await operatorAuth(c);
+    const cases = (await pool.query(
+      'SELECT id,reference,subject,category,status,version,created_at,updated_at '
+      + 'FROM portal_complaints ORDER BY updated_at DESC LIMIT 50')).rows;
+    return safe(c, { cases });
+  });
+  app.get('/operator/v1/cases/:id', async c => {
+    await operatorAuth(c);
+    if (!identifier(c.req.param('id'))) reject('operator_invalid', 400);
+    const row = (await pool.query(
+      'SELECT id,reference,subject,category,details,status,version,created_at,updated_at '
+      + 'FROM portal_complaints WHERE id=$1', [c.req.param('id')])).rows[0];
+    if (!row) reject('operator_not_found', 404);
+    const events = (await pool.query(
+      'SELECT sequence,author_role,author_name,message,old_status,new_status,created_at '
+      + 'FROM portal_case_events WHERE complaint_id=$1 ORDER BY sequence', [row.id])).rows;
+    return safe(c, { case: row, events });
+  });
+  app.patch('/operator/v1/cases/:id', async c => {
+    ready();
+    const value = await body(c, ['status', 'message', 'version']);
+    if (!identifier(c.req.param('id'))
+      || !Object.prototype.hasOwnProperty.call(transitions, value.status)
+      || !Number.isSafeInteger(value.version) || value.version < 1
+      || typeof value.message !== 'string' || value.message.length < 3
+      || value.message.length > 3000) reject('operator_invalid', 400);
+    await rate('case-update', 30, 3600);
+    const updated = await transaction(pool, async db => {
+      const actor = await operatorAuth(c, db);
+      const row = (await db.query(
+        'SELECT * FROM portal_complaints WHERE id=$1 FOR UPDATE',
+        [c.req.param('id')])).rows[0];
+      if (!row) reject('operator_not_found', 404);
+      if (row.version !== value.version) reject('operator_version_conflict', 409);
+      if (value.status !== row.status
+        && !transitions[row.status]?.includes(value.status)) reject('operator_invalid', 400);
+      const former = row.status, stamp = now(), nextVersion = row.version + 1;
+      await db.query(
+        'UPDATE portal_complaints SET status=$1,version=$2,updated_at=$3 WHERE id=$4',
+        [value.status, nextVersion, stamp, row.id]);
+      await db.query(
+        'INSERT INTO portal_case_events(id,complaint_id,actor_id,sequence,author_role,author_name,message,old_status,new_status,created_at) '
+        + "VALUES($1,$2,$3,$4,'owner',$5,$6,$7,$8,$9)",
+        [newId(), row.id, actor.owner_id, nextVersion, 'Staging Owner',
+          value.message, former, value.status, stamp]);
+      await audit(db, actor.owner_id, 'staging.owner.case_updated', row.id);
+      return { reference: row.reference, status: value.status, version: nextVersion };
+    });
+    return safe(c, { case: updated });
+  });
+  app.post('/operator/v1/logout', async c => {
+    await body(c, []);
+    const actor = await operatorAuth(c);
+    await pool.query(
+      'UPDATE cs_stage_operator_sessions SET revoked_at=$1 WHERE id=$2 AND revoked_at IS NULL',
+      [now(), actor.session_id]);
+    return safe(c, { signedOut: true });
+  });
+
+  return { app, pool, settings };
+}
++params.length+" ESCAPE '\\'").join(' OR ')+')';
+  }
+  async function queryPage(countSql,selectSql,params,page) {
+    const total=Number((await pool.query(countSql,params)).rows[0].total);
+    const records=(await pool.query(selectSql,[...params,page.limit,page.offset])).rows;
+    return {records,total,page:page.page,pageSize:page.limit};
+  }
+
+  const transitions = {
+    pending: ['in_review', 'closed'],
+    in_review: ['awaiting_info', 'resolved', 'closed'],
+    awaiting_info: ['in_review', 'resolved', 'closed'],
+    resolved: ['closed', 'in_review'],
+    closed: [],
+  };
+  app.get('/operator/v1/summary', async c => {
+    await operatorAuth(c);
+    const rows = (await pool.query(
+      'SELECT status,count(*)::int AS n FROM portal_complaints GROUP BY status')).rows;
+    const counts = Object.fromEntries(rows.map(x => [x.status, x.n]));
+    return safe(c, { counts, scope: 'fictional-staging-only' });
+  });
+  app.get('/operator/v1/cases', async c => {
+    await operatorAuth(c);
+    const cases = (await pool.query(
+      'SELECT id,reference,subject,category,status,version,created_at,updated_at '
+      + 'FROM portal_complaints ORDER BY updated_at DESC LIMIT 50')).rows;
+    return safe(c, { cases });
+  });
+  app.get('/operator/v1/cases/:id', async c => {
+    await operatorAuth(c);
+    if (!identifier(c.req.param('id'))) reject('operator_invalid', 400);
+    const row = (await pool.query(
+      'SELECT id,reference,subject,category,details,status,version,created_at,updated_at '
+      + 'FROM portal_complaints WHERE id=$1', [c.req.param('id')])).rows[0];
+    if (!row) reject('operator_not_found', 404);
+    const events = (await pool.query(
+      'SELECT sequence,author_role,author_name,message,old_status,new_status,created_at '
+      + 'FROM portal_case_events WHERE complaint_id=$1 ORDER BY sequence', [row.id])).rows;
+    return safe(c, { case: row, events });
+  });
+  app.patch('/operator/v1/cases/:id', async c => {
+    ready();
+    const value = await body(c, ['status', 'message', 'version']);
+    if (!identifier(c.req.param('id'))
+      || !Object.prototype.hasOwnProperty.call(transitions, value.status)
+      || !Number.isSafeInteger(value.version) || value.version < 1
+      || typeof value.message !== 'string' || value.message.length < 3
+      || value.message.length > 3000) reject('operator_invalid', 400);
+    await rate('case-update', 30, 3600);
+    const updated = await transaction(pool, async db => {
+      const actor = await operatorAuth(c, db);
+      const row = (await db.query(
+        'SELECT * FROM portal_complaints WHERE id=$1 FOR UPDATE',
+        [c.req.param('id')])).rows[0];
+      if (!row) reject('operator_not_found', 404);
+      if (row.version !== value.version) reject('operator_version_conflict', 409);
+      if (value.status !== row.status
+        && !transitions[row.status]?.includes(value.status)) reject('operator_invalid', 400);
+      const former = row.status, stamp = now(), nextVersion = row.version + 1;
+      await db.query(
+        'UPDATE portal_complaints SET status=$1,version=$2,updated_at=$3 WHERE id=$4',
+        [value.status, nextVersion, stamp, row.id]);
+      await db.query(
+        'INSERT INTO portal_case_events(id,complaint_id,actor_id,sequence,author_role,author_name,message,old_status,new_status,created_at) '
+        + "VALUES($1,$2,$3,$4,'owner',$5,$6,$7,$8,$9)",
+        [newId(), row.id, actor.owner_id, nextVersion, 'Staging Owner',
+          value.message, former, value.status, stamp]);
+      await audit(db, actor.owner_id, 'staging.owner.case_updated', row.id);
+      return { reference: row.reference, status: value.status, version: nextVersion };
+    });
+    return safe(c, { case: updated });
+  });
+  app.post('/operator/v1/logout', async c => {
+    await body(c, []);
+    const actor = await operatorAuth(c);
+    await pool.query(
+      'UPDATE cs_stage_operator_sessions SET revoked_at=$1 WHERE id=$2 AND revoked_at IS NULL',
+      [now(), actor.session_id]);
+    return safe(c, { signedOut: true });
+  });
+
+  return { app, pool, settings };
+}
++(params.length+2),params,page);
+    return safe(c,{events:result.records,total:result.total,page:result.page,pageSize:result.pageSize});
+  });
+  app.get('/operator/v1/audit',async c=>{
+    await operatorAuth(c);
+    const page=pageRequest(c),params=[];
+    const where=searchWhere(page.term,['a.action','a.record'],params);
+    const result=await queryPage('SELECT count(*)::int AS total FROM portal_audit_events a'+where,
+      'SELECT a.id,a.actor_id,u.email AS actor_email,a.action,a.record,a.created_at FROM portal_audit_events a '
+      +'LEFT JOIN portal_users u ON u.id=a.actor_id'+where
+      +' ORDER BY a.created_at DESC,a.id DESC LIMIT 
+    await operatorAuth(c);
+    const cases = (await pool.query(
+      'SELECT id,reference,subject,category,status,version,created_at,updated_at '
+      + 'FROM portal_complaints ORDER BY updated_at DESC LIMIT 50')).rows;
+    return safe(c, { cases });
+  });
+  app.get('/operator/v1/cases/:id', async c => {
+    await operatorAuth(c);
+    if (!identifier(c.req.param('id'))) reject('operator_invalid', 400);
+    const row = (await pool.query(
+      'SELECT id,reference,subject,category,details,status,version,created_at,updated_at '
+      + 'FROM portal_complaints WHERE id=$1', [c.req.param('id')])).rows[0];
+    if (!row) reject('operator_not_found', 404);
+    const events = (await pool.query(
+      'SELECT sequence,author_role,author_name,message,old_status,new_status,created_at '
+      + 'FROM portal_case_events WHERE complaint_id=$1 ORDER BY sequence', [row.id])).rows;
+    return safe(c, { case: row, events });
+  });
+  app.patch('/operator/v1/cases/:id', async c => {
+    ready();
+    const value = await body(c, ['status', 'message', 'version']);
+    if (!identifier(c.req.param('id'))
+      || !Object.prototype.hasOwnProperty.call(transitions, value.status)
+      || !Number.isSafeInteger(value.version) || value.version < 1
+      || typeof value.message !== 'string' || value.message.length < 3
+      || value.message.length > 3000) reject('operator_invalid', 400);
+    await rate('case-update', 30, 3600);
+    const updated = await transaction(pool, async db => {
+      const actor = await operatorAuth(c, db);
+      const row = (await db.query(
+        'SELECT * FROM portal_complaints WHERE id=$1 FOR UPDATE',
+        [c.req.param('id')])).rows[0];
+      if (!row) reject('operator_not_found', 404);
+      if (row.version !== value.version) reject('operator_version_conflict', 409);
+      if (value.status !== row.status
+        && !transitions[row.status]?.includes(value.status)) reject('operator_invalid', 400);
+      const former = row.status, stamp = now(), nextVersion = row.version + 1;
+      await db.query(
+        'UPDATE portal_complaints SET status=$1,version=$2,updated_at=$3 WHERE id=$4',
+        [value.status, nextVersion, stamp, row.id]);
+      await db.query(
+        'INSERT INTO portal_case_events(id,complaint_id,actor_id,sequence,author_role,author_name,message,old_status,new_status,created_at) '
+        + "VALUES($1,$2,$3,$4,'owner',$5,$6,$7,$8,$9)",
+        [newId(), row.id, actor.owner_id, nextVersion, 'Staging Owner',
+          value.message, former, value.status, stamp]);
+      await audit(db, actor.owner_id, 'staging.owner.case_updated', row.id);
+      return { reference: row.reference, status: value.status, version: nextVersion };
+    });
+    return safe(c, { case: updated });
+  });
+  app.post('/operator/v1/logout', async c => {
+    await body(c, []);
+    const actor = await operatorAuth(c);
+    await pool.query(
+      'UPDATE cs_stage_operator_sessions SET revoked_at=$1 WHERE id=$2 AND revoked_at IS NULL',
+      [now(), actor.session_id]);
+    return safe(c, { signedOut: true });
+  });
+
+  return { app, pool, settings };
+}
++params.length+" ESCAPE '\\'").join(' OR ')+')';
+  }
+  async function queryPage(countSql,selectSql,params,page) {
+    const total=Number((await pool.query(countSql,params)).rows[0].total);
+    const records=(await pool.query(selectSql,[...params,page.limit,page.offset])).rows;
+    return {records,total,page:page.page,pageSize:page.limit};
+  }
+
+  const transitions = {
+    pending: ['in_review', 'closed'],
+    in_review: ['awaiting_info', 'resolved', 'closed'],
+    awaiting_info: ['in_review', 'resolved', 'closed'],
+    resolved: ['closed', 'in_review'],
+    closed: [],
+  };
+  app.get('/operator/v1/summary', async c => {
+    await operatorAuth(c);
+    const rows = (await pool.query(
+      'SELECT status,count(*)::int AS n FROM portal_complaints GROUP BY status')).rows;
+    const counts = Object.fromEntries(rows.map(x => [x.status, x.n]));
+    return safe(c, { counts, scope: 'fictional-staging-only' });
+  });
+  app.get('/operator/v1/cases', async c => {
+    await operatorAuth(c);
+    const cases = (await pool.query(
+      'SELECT id,reference,subject,category,status,version,created_at,updated_at '
+      + 'FROM portal_complaints ORDER BY updated_at DESC LIMIT 50')).rows;
+    return safe(c, { cases });
+  });
+  app.get('/operator/v1/cases/:id', async c => {
+    await operatorAuth(c);
+    if (!identifier(c.req.param('id'))) reject('operator_invalid', 400);
+    const row = (await pool.query(
+      'SELECT id,reference,subject,category,details,status,version,created_at,updated_at '
+      + 'FROM portal_complaints WHERE id=$1', [c.req.param('id')])).rows[0];
+    if (!row) reject('operator_not_found', 404);
+    const events = (await pool.query(
+      'SELECT sequence,author_role,author_name,message,old_status,new_status,created_at '
+      + 'FROM portal_case_events WHERE complaint_id=$1 ORDER BY sequence', [row.id])).rows;
+    return safe(c, { case: row, events });
+  });
+  app.patch('/operator/v1/cases/:id', async c => {
+    ready();
+    const value = await body(c, ['status', 'message', 'version']);
+    if (!identifier(c.req.param('id'))
+      || !Object.prototype.hasOwnProperty.call(transitions, value.status)
+      || !Number.isSafeInteger(value.version) || value.version < 1
+      || typeof value.message !== 'string' || value.message.length < 3
+      || value.message.length > 3000) reject('operator_invalid', 400);
+    await rate('case-update', 30, 3600);
+    const updated = await transaction(pool, async db => {
+      const actor = await operatorAuth(c, db);
+      const row = (await db.query(
+        'SELECT * FROM portal_complaints WHERE id=$1 FOR UPDATE',
+        [c.req.param('id')])).rows[0];
+      if (!row) reject('operator_not_found', 404);
+      if (row.version !== value.version) reject('operator_version_conflict', 409);
+      if (value.status !== row.status
+        && !transitions[row.status]?.includes(value.status)) reject('operator_invalid', 400);
+      const former = row.status, stamp = now(), nextVersion = row.version + 1;
+      await db.query(
+        'UPDATE portal_complaints SET status=$1,version=$2,updated_at=$3 WHERE id=$4',
+        [value.status, nextVersion, stamp, row.id]);
+      await db.query(
+        'INSERT INTO portal_case_events(id,complaint_id,actor_id,sequence,author_role,author_name,message,old_status,new_status,created_at) '
+        + "VALUES($1,$2,$3,$4,'owner',$5,$6,$7,$8,$9)",
+        [newId(), row.id, actor.owner_id, nextVersion, 'Staging Owner',
+          value.message, former, value.status, stamp]);
+      await audit(db, actor.owner_id, 'staging.owner.case_updated', row.id);
+      return { reference: row.reference, status: value.status, version: nextVersion };
+    });
+    return safe(c, { case: updated });
+  });
+  app.post('/operator/v1/logout', async c => {
+    await body(c, []);
+    const actor = await operatorAuth(c);
+    await pool.query(
+      'UPDATE cs_stage_operator_sessions SET revoked_at=$1 WHERE id=$2 AND revoked_at IS NULL',
+      [now(), actor.session_id]);
+    return safe(c, { signedOut: true });
+  });
+
+  return { app, pool, settings };
+}
++(params.length+1)
+      +' OFFSET 
+    await operatorAuth(c);
+    const cases = (await pool.query(
+      'SELECT id,reference,subject,category,status,version,created_at,updated_at '
+      + 'FROM portal_complaints ORDER BY updated_at DESC LIMIT 50')).rows;
+    return safe(c, { cases });
+  });
+  app.get('/operator/v1/cases/:id', async c => {
+    await operatorAuth(c);
+    if (!identifier(c.req.param('id'))) reject('operator_invalid', 400);
+    const row = (await pool.query(
+      'SELECT id,reference,subject,category,details,status,version,created_at,updated_at '
+      + 'FROM portal_complaints WHERE id=$1', [c.req.param('id')])).rows[0];
+    if (!row) reject('operator_not_found', 404);
+    const events = (await pool.query(
+      'SELECT sequence,author_role,author_name,message,old_status,new_status,created_at '
+      + 'FROM portal_case_events WHERE complaint_id=$1 ORDER BY sequence', [row.id])).rows;
+    return safe(c, { case: row, events });
+  });
+  app.patch('/operator/v1/cases/:id', async c => {
+    ready();
+    const value = await body(c, ['status', 'message', 'version']);
+    if (!identifier(c.req.param('id'))
+      || !Object.prototype.hasOwnProperty.call(transitions, value.status)
+      || !Number.isSafeInteger(value.version) || value.version < 1
+      || typeof value.message !== 'string' || value.message.length < 3
+      || value.message.length > 3000) reject('operator_invalid', 400);
+    await rate('case-update', 30, 3600);
+    const updated = await transaction(pool, async db => {
+      const actor = await operatorAuth(c, db);
+      const row = (await db.query(
+        'SELECT * FROM portal_complaints WHERE id=$1 FOR UPDATE',
+        [c.req.param('id')])).rows[0];
+      if (!row) reject('operator_not_found', 404);
+      if (row.version !== value.version) reject('operator_version_conflict', 409);
+      if (value.status !== row.status
+        && !transitions[row.status]?.includes(value.status)) reject('operator_invalid', 400);
+      const former = row.status, stamp = now(), nextVersion = row.version + 1;
+      await db.query(
+        'UPDATE portal_complaints SET status=$1,version=$2,updated_at=$3 WHERE id=$4',
+        [value.status, nextVersion, stamp, row.id]);
+      await db.query(
+        'INSERT INTO portal_case_events(id,complaint_id,actor_id,sequence,author_role,author_name,message,old_status,new_status,created_at) '
+        + "VALUES($1,$2,$3,$4,'owner',$5,$6,$7,$8,$9)",
+        [newId(), row.id, actor.owner_id, nextVersion, 'Staging Owner',
+          value.message, former, value.status, stamp]);
+      await audit(db, actor.owner_id, 'staging.owner.case_updated', row.id);
+      return { reference: row.reference, status: value.status, version: nextVersion };
+    });
+    return safe(c, { case: updated });
+  });
+  app.post('/operator/v1/logout', async c => {
+    await body(c, []);
+    const actor = await operatorAuth(c);
+    await pool.query(
+      'UPDATE cs_stage_operator_sessions SET revoked_at=$1 WHERE id=$2 AND revoked_at IS NULL',
+      [now(), actor.session_id]);
+    return safe(c, { signedOut: true });
+  });
+
+  return { app, pool, settings };
+}
++params.length+" ESCAPE '\\'").join(' OR ')+')';
+  }
+  async function queryPage(countSql,selectSql,params,page) {
+    const total=Number((await pool.query(countSql,params)).rows[0].total);
+    const records=(await pool.query(selectSql,[...params,page.limit,page.offset])).rows;
+    return {records,total,page:page.page,pageSize:page.limit};
+  }
+
+  const transitions = {
+    pending: ['in_review', 'closed'],
+    in_review: ['awaiting_info', 'resolved', 'closed'],
+    awaiting_info: ['in_review', 'resolved', 'closed'],
+    resolved: ['closed', 'in_review'],
+    closed: [],
+  };
+  app.get('/operator/v1/summary', async c => {
+    await operatorAuth(c);
+    const rows = (await pool.query(
+      'SELECT status,count(*)::int AS n FROM portal_complaints GROUP BY status')).rows;
+    const counts = Object.fromEntries(rows.map(x => [x.status, x.n]));
+    return safe(c, { counts, scope: 'fictional-staging-only' });
+  });
+  app.get('/operator/v1/cases', async c => {
+    await operatorAuth(c);
+    const cases = (await pool.query(
+      'SELECT id,reference,subject,category,status,version,created_at,updated_at '
+      + 'FROM portal_complaints ORDER BY updated_at DESC LIMIT 50')).rows;
+    return safe(c, { cases });
+  });
+  app.get('/operator/v1/cases/:id', async c => {
+    await operatorAuth(c);
+    if (!identifier(c.req.param('id'))) reject('operator_invalid', 400);
+    const row = (await pool.query(
+      'SELECT id,reference,subject,category,details,status,version,created_at,updated_at '
+      + 'FROM portal_complaints WHERE id=$1', [c.req.param('id')])).rows[0];
+    if (!row) reject('operator_not_found', 404);
+    const events = (await pool.query(
+      'SELECT sequence,author_role,author_name,message,old_status,new_status,created_at '
+      + 'FROM portal_case_events WHERE complaint_id=$1 ORDER BY sequence', [row.id])).rows;
+    return safe(c, { case: row, events });
+  });
+  app.patch('/operator/v1/cases/:id', async c => {
+    ready();
+    const value = await body(c, ['status', 'message', 'version']);
+    if (!identifier(c.req.param('id'))
+      || !Object.prototype.hasOwnProperty.call(transitions, value.status)
+      || !Number.isSafeInteger(value.version) || value.version < 1
+      || typeof value.message !== 'string' || value.message.length < 3
+      || value.message.length > 3000) reject('operator_invalid', 400);
+    await rate('case-update', 30, 3600);
+    const updated = await transaction(pool, async db => {
+      const actor = await operatorAuth(c, db);
+      const row = (await db.query(
+        'SELECT * FROM portal_complaints WHERE id=$1 FOR UPDATE',
+        [c.req.param('id')])).rows[0];
+      if (!row) reject('operator_not_found', 404);
+      if (row.version !== value.version) reject('operator_version_conflict', 409);
+      if (value.status !== row.status
+        && !transitions[row.status]?.includes(value.status)) reject('operator_invalid', 400);
+      const former = row.status, stamp = now(), nextVersion = row.version + 1;
+      await db.query(
+        'UPDATE portal_complaints SET status=$1,version=$2,updated_at=$3 WHERE id=$4',
+        [value.status, nextVersion, stamp, row.id]);
+      await db.query(
+        'INSERT INTO portal_case_events(id,complaint_id,actor_id,sequence,author_role,author_name,message,old_status,new_status,created_at) '
+        + "VALUES($1,$2,$3,$4,'owner',$5,$6,$7,$8,$9)",
+        [newId(), row.id, actor.owner_id, nextVersion, 'Staging Owner',
+          value.message, former, value.status, stamp]);
+      await audit(db, actor.owner_id, 'staging.owner.case_updated', row.id);
+      return { reference: row.reference, status: value.status, version: nextVersion };
+    });
+    return safe(c, { case: updated });
+  });
+  app.post('/operator/v1/logout', async c => {
+    await body(c, []);
+    const actor = await operatorAuth(c);
+    await pool.query(
+      'UPDATE cs_stage_operator_sessions SET revoked_at=$1 WHERE id=$2 AND revoked_at IS NULL',
+      [now(), actor.session_id]);
+    return safe(c, { signedOut: true });
+  });
+
+  return { app, pool, settings };
+}
++(params.length+2),params,page);
+    return safe(c,{events:result.records,total:result.total,page:result.page,pageSize:result.pageSize});
+  });
+  app.get('/operator/v1/sessions',async c=>{
+    await operatorAuth(c);
+    const page=pageRequest(c);
+    // Snapshot visibility: citizen logout deletes sessions. Browser close is unobservable.
+    const citizen=await pool.query(
+      "SELECT s.id,s.user_id,u.email,'citizen' AS session_kind,s.created_at,s.expires_at, "
+      +"CASE WHEN s.expires_at>$1 THEN 'active' ELSE 'expired' END AS state "
+      +"FROM portal_sessions s JOIN portal_users u ON u.id=s.user_id "
+      +"WHERE s.authenticated_at IS NOT NULL ORDER BY s.created_at DESC LIMIT 300",[now()]);
+    const owners=await pool.query(
+      "SELECT s.id,s.owner_id AS user_id,u.email,'administrator' AS session_kind,s.created_at,s.expires_at, "
+      +"CASE WHEN s.revoked_at IS NOT NULL THEN 'revoked' WHEN s.expires_at>$1 THEN 'active' ELSE 'expired' END AS state "
+      +"FROM cs_stage_operator_sessions s JOIN portal_users u ON u.id=s.owner_id "
+      +"ORDER BY s.created_at DESC LIMIT 300",[now()]);
+    const combined=[...citizen.rows,...owners.rows]
+      .sort((a,b)=>Number(b.created_at)-Number(a.created_at));
+    const matching=page.term?combined.filter(x=>x.email.toLowerCase().includes(page.term.toLowerCase())):combined;
+    return safe(c,{sessions:matching.slice(page.offset,page.offset+page.limit),
+      total:matching.length,page:page.page,pageSize:page.limit,
+      note:'Session snapshots only. Browser closure is not proof of logout. Citizen logout deletes its session.'});
+  });
+  app.patch('/operator/v1/users/:id',async c=>{
+    const value=await body(c,['active','version']);
+    if (!identifier(c.req.param('id')) || typeof value.active!=='boolean'
+      || !Number.isSafeInteger(value.version) || value.version<1) reject('operator_invalid',400);
+    await rate('user-status',12,3600);
+    const result=await transaction(pool,async db=>{
+      const actor=await operatorAuth(c,db);
+      const row=(await db.query('SELECT id,role,active,version FROM portal_users WHERE id=$1 FOR UPDATE',
+        [c.req.param('id')])).rows[0];
+      if (!row) reject('operator_not_found',404);
+      if (row.role!=='citizen'||row.id===actor.owner_id) reject('operator_forbidden',403);
+      if (row.version!==value.version) reject('operator_version_conflict',409);
+      if (row.active===value.active) return {id:row.id,active:row.active,version:row.version};
+      await db.query('UPDATE portal_users SET active=$1,version=version+1,updated_at=$2 WHERE id=$3',
+        [value.active,now(),row.id]);
+      if(!value.active){
+        await db.query('DELETE FROM portal_challenges WHERE user_id=$1 OR browser_id IN '
+          +'(SELECT id FROM portal_sessions WHERE user_id=$1)',[row.id]);
+        await db.query('DELETE FROM portal_sessions WHERE user_id=$1',[row.id]);
+      }
+      await audit(db,actor.owner_id,'staging.owner.user_status',row.id);
+      return {id:row.id,active:value.active,version:row.version+1};
+    });
+    return safe(c,{user:result});
+  });
+
+  app.get('/operator/v1/cases', async c => {
+    await operatorAuth(c);
+    const cases = (await pool.query(
+      'SELECT id,reference,subject,category,status,version,created_at,updated_at '
+      + 'FROM portal_complaints ORDER BY updated_at DESC LIMIT 50')).rows;
+    return safe(c, { cases });
+  });
+  app.get('/operator/v1/cases/:id', async c => {
+    await operatorAuth(c);
+    if (!identifier(c.req.param('id'))) reject('operator_invalid', 400);
+    const row = (await pool.query(
+      'SELECT id,reference,subject,category,details,status,version,created_at,updated_at '
+      + 'FROM portal_complaints WHERE id=$1', [c.req.param('id')])).rows[0];
+    if (!row) reject('operator_not_found', 404);
+    const events = (await pool.query(
+      'SELECT sequence,author_role,author_name,message,old_status,new_status,created_at '
+      + 'FROM portal_case_events WHERE complaint_id=$1 ORDER BY sequence', [row.id])).rows;
+    return safe(c, { case: row, events });
+  });
+  app.patch('/operator/v1/cases/:id', async c => {
+    ready();
+    const value = await body(c, ['status', 'message', 'version']);
+    if (!identifier(c.req.param('id'))
+      || !Object.prototype.hasOwnProperty.call(transitions, value.status)
+      || !Number.isSafeInteger(value.version) || value.version < 1
+      || typeof value.message !== 'string' || value.message.length < 3
+      || value.message.length > 3000) reject('operator_invalid', 400);
+    await rate('case-update', 30, 3600);
+    const updated = await transaction(pool, async db => {
+      const actor = await operatorAuth(c, db);
+      const row = (await db.query(
+        'SELECT * FROM portal_complaints WHERE id=$1 FOR UPDATE',
+        [c.req.param('id')])).rows[0];
+      if (!row) reject('operator_not_found', 404);
+      if (row.version !== value.version) reject('operator_version_conflict', 409);
+      if (value.status !== row.status
+        && !transitions[row.status]?.includes(value.status)) reject('operator_invalid', 400);
+      const former = row.status, stamp = now(), nextVersion = row.version + 1;
+      await db.query(
+        'UPDATE portal_complaints SET status=$1,version=$2,updated_at=$3 WHERE id=$4',
+        [value.status, nextVersion, stamp, row.id]);
+      await db.query(
+        'INSERT INTO portal_case_events(id,complaint_id,actor_id,sequence,author_role,author_name,message,old_status,new_status,created_at) '
+        + "VALUES($1,$2,$3,$4,'owner',$5,$6,$7,$8,$9)",
+        [newId(), row.id, actor.owner_id, nextVersion, 'Staging Owner',
+          value.message, former, value.status, stamp]);
+      await audit(db, actor.owner_id, 'staging.owner.case_updated', row.id);
+      return { reference: row.reference, status: value.status, version: nextVersion };
+    });
+    return safe(c, { case: updated });
+  });
+  app.post('/operator/v1/logout', async c => {
+    await body(c, []);
+    const actor = await operatorAuth(c);
+    await pool.query(
+      'UPDATE cs_stage_operator_sessions SET revoked_at=$1 WHERE id=$2 AND revoked_at IS NULL',
+      [now(), actor.session_id]);
+    return safe(c, { signedOut: true });
+  });
+
+  return { app, pool, settings };
+}
++params.length+" ESCAPE '\\'").join(' OR ')+')';
+  }
+  async function queryPage(countSql,selectSql,params,page) {
+    const total=Number((await pool.query(countSql,params)).rows[0].total);
+    const records=(await pool.query(selectSql,[...params,page.limit,page.offset])).rows;
+    return {records,total,page:page.page,pageSize:page.limit};
+  }
+
   const transitions = {
     pending: ['in_review', 'closed'],
     in_review: ['awaiting_info', 'resolved', 'closed'],
