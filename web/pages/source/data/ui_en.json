@@ -468,6 +468,8 @@
   "unified_dash_sessions": "Sessions",
   "unified_dash_cases": "Fictional cases",
   "unified_dash_audit": "Audit history",
+  "unified_dash_case_search": "Search fictional cases",
+  "unified_dash_case_search_placeholder": "Reference or subject",
   "unified_dash_search": "Search users",
   "unified_dash_search_placeholder": "Search name or email",
   "unified_dash_filter": "Filter activity",
