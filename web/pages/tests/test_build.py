@@ -107,5 +107,25 @@ class StaticBuild(unittest.TestCase):
             with self.subTest(output=output), self.assertRaises(ValueError):
                 export.main(['--output', str(output)])
 
+    def test_owner_workspace_case_controls_privacy_and_responsive_support(self):
+        template = (ROOT / 'source/templates/operator.html').read_text()
+        browser = (ROOT / 'source/static/js/operator.js').read_text()
+        css = (ROOT / 'source/static/css/site.css').read_text()
+        for item in ('id="operator-case-filters"', 'id="operator-case-search"',
+                     'id="operator-case-status"', 'id="operator-cases-pagination"'):
+            self.assertIn(item, template)
+        self.assertIn("workspace/cases?", browser)
+        self.assertIn("return [user.id, user.name", browser)
+        self.assertIn("confirmedByServer", browser)
+        self.assertIn("Server revocation was not confirmed", browser)
+        self.assertNotIn("sessionStorage.setItem", browser)
+        self.assertNotIn("localStorage.setItem", browser)
+        self.assertIn(".owner-scroll { overflow-x: auto", css)
+        self.assertIn("@media(max-width:700px)", css)
+        for lang in ('en', 'hi', 'te'):
+            copy = json.loads((ROOT / f'source/data/ui_{lang}.json').read_text())
+            self.assertTrue(copy['unified_dash_case_search'].strip())
+            self.assertTrue(copy['unified_dash_case_search_placeholder'].strip())
+
 if __name__ == '__main__':
     unittest.main()
