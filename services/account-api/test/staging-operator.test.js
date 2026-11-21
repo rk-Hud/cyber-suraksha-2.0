@@ -197,7 +197,7 @@ test('staging owner provisioning requires approved Google subject, private key a
 
   // Workspace APIs require an independently verified operator bearer.
   const workspacePaths = ['/workspace/summary', '/workspace/users', '/workspace/events',
-    '/workspace/sessions', '/workspace/audit', '/workspace/users/' + a.user.id + '/cases'];
+    '/workspace/sessions', '/workspace/audit', '/workspace/cases', '/workspace/users/' + a.user.id + '/cases'];
   for (const path of workspacePaths) {
     const approved = await op.app.request('/operator/v1' + path, {
       headers: { Authorization: 'Bearer ' + bearer.json.data.token, Origin: origin } });
@@ -219,11 +219,28 @@ test('staging owner provisioning requires approved Google subject, private key a
   assert.equal(userRows[0].case_references[0], aCase.json.data.case.reference);
   assert.ok(!('password_hash' in userRows[0]) && !('totp_secret' in userRows[0]));
   for (const bad of ['/workspace/users?page=0', '/workspace/users?page=-3',
-    '/workspace/events?type=other', '/workspace/sessions?page=9999']) {
+    '/workspace/events?type=other', '/workspace/sessions?page=9999',
+    '/workspace/cases?status=bogus', '/workspace/cases?page=1000',
+    '/workspace/cases?q=%0A']) {
     const denied = await op.app.request('/operator/v1' + bad, {
       headers: { Authorization: 'Bearer ' + bearer.json.data.token, Origin: origin } });
     assert.equal(denied.status, 400, bad);
   }
+  // Owner case search is bound/filtered on the server, never in browser JS.
+  const caseSearch = await op.app.request('/operator/v1/workspace/cases?q='
+    + encodeURIComponent(aCase.json.data.case.reference) + '&status=pending', {
+    headers: { Authorization: 'Bearer ' + bearer.json.data.token, Origin: origin } });
+  assert.equal(caseSearch.status, 200);
+  const caseSearchData = (await caseSearch.json()).data;
+  assert.equal(caseSearchData.items.length, 1);
+  assert.equal(caseSearchData.items[0].reference, aCase.json.data.case.reference);
+  assert.equal(caseSearchData.pageSize, 20);
+  const injected = await op.app.request('/operator/v1/workspace/cases?q='
+    + encodeURIComponent("' OR 1=1 --"), {
+    headers: { Authorization: 'Bearer ' + bearer.json.data.token, Origin: origin } });
+  assert.equal(injected.status, 200);
+  assert.equal((await injected.json()).data.items.length, 0);
+
   const operatorCases = await op.app.request('/operator/v1/cases', {
     headers: { Authorization: 'Bearer ' + bearer.json.data.token, Origin: origin } });
   assert.equal(operatorCases.status, 200);
