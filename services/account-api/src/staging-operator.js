@@ -418,6 +418,7 @@ export function createStagingOperator(options = {}) {
     const list=[
       'SELECT u.id,u.name,u.email,u.role,u.active,u.version,u.created_at,u.verified_at,',
       '(SELECT count(*)::int FROM portal_complaints p WHERE p.user_id=u.id) AS case_count,',
+      '(SELECT json_agg(recent.reference) FROM (SELECT p.reference FROM portal_complaints p WHERE p.user_id=u.id ORDER BY p.updated_at DESC,p.id DESC LIMIT 5) recent) AS case_references,',
       '(SELECT p.status FROM portal_complaints p WHERE p.user_id=u.id ORDER BY p.updated_at DESC,p.id DESC LIMIT 1) AS latest_case_status,',
       "(SELECT max(l.created_at) FROM portal_login_events l WHERE l.user_id=u.id AND l.success=true AND l.reason IN ('google_verified_oidc','password_and_email_otp','staging_google_password_totp')) AS last_login_at,",
       '(SELECT max(l.created_at) FROM portal_login_events l WHERE l.user_id=u.id AND l.success=false) AS last_failed_at,',
@@ -453,21 +454,30 @@ export function createStagingOperator(options = {}) {
   app.get('/operator/v1/sessions',async c=>{
     await operatorAuth(c);
     const page=paging(c);
-    const citizen=await pool.query(
-      "SELECT s.id,s.user_id,u.email,'citizen' AS session_kind,s.created_at,s.expires_at,"
-      +" CASE WHEN s.expires_at>$1 THEN 'active' ELSE 'expired' END AS state"
-      +" FROM portal_sessions s JOIN portal_users u ON u.id=s.user_id"
-      +" WHERE s.authenticated_at IS NOT NULL ORDER BY s.created_at DESC LIMIT 300",[now()]);
-    const owner=await pool.query(
-      "SELECT s.id,s.owner_id AS user_id,u.email,'administrator' AS session_kind,s.created_at,s.expires_at,"
-      +" CASE WHEN s.revoked_at IS NOT NULL THEN 'revoked'"
-      +" WHEN s.expires_at>$1 THEN 'active' ELSE 'expired' END AS state"
-      +" FROM cs_stage_operator_sessions s JOIN portal_users u ON u.id=s.owner_id"
-      +" ORDER BY s.created_at DESC LIMIT 300",[now()]);
-    const all=[...citizen.rows,...owner.rows].sort((a,b)=>Number(b.created_at)-Number(a.created_at));
-    const rows=page.term?all.filter(x=>x.email.toLowerCase().includes(page.term.toLowerCase())):all;
-    return safe(c,{sessions:rows.slice(page.offset,page.offset+page.limit),total:rows.length,
-      page:page.page,pageSize:page.limit,
+    // Query the database rather than fetching or revealing every active session.
+    // A citizen logout deletes its session; explicit logout events remain in activity.
+    const union=[
+      "SELECT s.id,s.user_id,u.email,'citizen' AS session_kind,s.created_at,s.expires_at,",
+      "CASE WHEN s.expires_at>$1 THEN 'active' ELSE 'expired' END AS state",
+      'FROM portal_sessions s JOIN portal_users u ON u.id=s.user_id',
+      'WHERE s.authenticated_at IS NOT NULL',
+      'UNION ALL',
+      "SELECT o.id,o.owner_id AS user_id,u.email,'administrator' AS session_kind,o.created_at,o.expires_at,",
+      "CASE WHEN o.revoked_at IS NOT NULL THEN 'revoked' WHEN o.expires_at>$1 THEN 'active' ELSE 'expired' END AS state",
+      'FROM cs_stage_operator_sessions o JOIN portal_users u ON u.id=o.owner_id',
+    ].join(' ');
+    const params=[now()];
+    let where='';
+    if(page.term){
+      params.push('%'+page.term.toLowerCase().replace(/[\\%_]/g,'\\$&')+'%');
+      where=" WHERE LOWER(s.email) LIKE $2 ESCAPE '\\'";
+    }
+    const base=' FROM ('+union+') s'+where;
+    const total=Number((await pool.query('SELECT count(*)::int AS total'+base,params)).rows[0].total);
+    const sessions=(await pool.query('SELECT s.id,s.user_id,s.email,s.session_kind,s.created_at,s.expires_at,s.state'
+      +base+' ORDER BY s.created_at DESC,s.id DESC LIMIT $'+(params.length+1)
+      +' OFFSET $'+(params.length+2),[...params,page.limit,page.offset])).rows;
+    return safe(c,{sessions,total,page:page.page,pageSize:page.limit,
       note:'Session snapshot only. Browser closure is not proof of logout; citizen sessions are deleted on sign-out.'});
   });
   app.patch('/operator/v1/users/:id',async c=>{
