@@ -1,4 +1,4 @@
-// Operator-only browser client. No localStorage, cookies, analytics or token logs.
+// Operator-only browser client. No browser persistence, cookies, analytics or token logs.
 // Source-only: enabled exclusively by the private staging operator URL in build config.
 (() => {
   'use strict';
