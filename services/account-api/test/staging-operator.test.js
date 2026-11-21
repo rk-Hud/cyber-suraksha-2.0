@@ -21,6 +21,9 @@ const env = (overrides = {}) => ({
   API_SESSION_KEY: 's'.repeat(48),
   API_OTP_KEY: 'o'.repeat(48),
   TOTP_ENCRYPTION_KEY: 't'.repeat(48),
+  STAGING_OPERATOR_SESSION_KEY: 'S'.repeat(64),
+  STAGING_OPERATOR_OTP_KEY: 'O'.repeat(64),
+  STAGING_OPERATOR_TOTP_KEY: 'T'.repeat(64),
   GOOGLE_CLIENT_ID: '1234567890-test.apps.googleusercontent.com',
   PUBLIC_WEB_URL: origin + '/cyber-suraksha-2.0/',
   ...overrides,
@@ -184,16 +187,81 @@ test('staging owner provisioning requires approved Google subject, private key a
   assert.equal(bearer.status, 200);
   assert.equal(bearer.json.data.mfaVerified, true);
   const ownerAdmin = await api.request('/admin/summary', { token: bearer.json.data.token });
-  assert.equal(ownerAdmin.status, 200);
+  assert.notEqual(ownerAdmin.status, 200, 'operator bearer must not authenticate on citizen API');
+  const operatorSummary = await op.app.request('/operator/v1/summary', {
+    headers: { Authorization: 'Bearer ' + bearer.json.data.token, Origin: origin } });
+  assert.equal(operatorSummary.status, 200);
+  const citizenSummary = await op.app.request('/operator/v1/summary', {
+    headers: { Authorization: 'Bearer ' + a.token, Origin: origin } });
+  assert.equal(citizenSummary.status, 401);
+  const operatorCases = await op.app.request('/operator/v1/cases', {
+    headers: { Authorization: 'Bearer ' + bearer.json.data.token, Origin: origin } });
+  assert.equal(operatorCases.status, 200);
+  const listed = (await operatorCases.json()).data.cases;
+  assert.equal(listed.length, 2);
+  const adminRow = listed.find(x => x.id === aCase.json.data.case.id);
+  assert.ok(adminRow);
+  const update = await op.app.request('/operator/v1/cases/' + adminRow.id, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + bearer.json.data.token,
+      Origin: origin },
+    body: JSON.stringify({ status: 'in_review', version: adminRow.version, message: 'Synthetic operator triage update' }),
+  });
+  assert.equal(update.status, 200);
+  const forbiddenUpdate = await op.app.request('/operator/v1/cases/' + adminRow.id, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + b.token,
+      Origin: origin },
+    body: JSON.stringify({ status: 'resolved', version: adminRow.version + 1, message: 'Forbidden' }),
+  });
+  assert.equal(forbiddenUpdate.status, 401);
+  const replayUpdate = await op.app.request('/operator/v1/cases/' + adminRow.id, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + bearer.json.data.token,
+      Origin: origin },
+    body: JSON.stringify({ status: 'in_review', version: adminRow.version, message: 'Stale version' }),
+  });
+  assert.equal(replayUpdate.status, 409);
+  const logout = await request(op, '/logout', {});
+  assert.equal(logout.status, 401, 'logout must require bearer');
+  const authorizedLogout = await op.app.request('/operator/v1/logout', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + bearer.json.data.token,
+      Origin: origin }, body: '{}' });
+  assert.equal(authorizedLogout.status, 200);
+  const revoked = await op.app.request('/operator/v1/summary', {
+    headers: { Authorization: 'Bearer ' + bearer.json.data.token, Origin: origin } });
+  assert.equal(revoked.status, 401);
   assert.equal((await api.request('/admin/summary', { token: b.token })).status, 403);
   assert.equal((await api.request('/cases/' + aCase.json.data.case.id, { token: b.token })).status, 404);
   const after = (await api.pool.query('SELECT reference,user_id,status FROM portal_complaints ORDER BY reference')).rows;
-  assert.deepEqual(after, before);
+  assert.deepEqual(after.filter(x => x.reference !== aCase.json.data.case.reference),
+    before.filter(x => x.reference !== aCase.json.data.case.reference));
+  assert.equal(after.find(x => x.reference === aCase.json.data.case.reference).status, 'in_review');
   const linked = (await api.pool.query('SELECT google_sub,user_id FROM portal_google_identities ORDER BY google_sub')).rows;
   assert.equal(linked.length, 2);
   assert.deepEqual(linked.map(x => x.user_id).sort(), [a.user.id, b.user.id].sort());
   const audits = (await api.pool.query(
     "SELECT action FROM portal_audit_events WHERE action LIKE 'staging.owner.%' ORDER BY created_at")).rows;
   assert.deepEqual(audits.map(x => x.action).sort(),
-    ['staging.owner.mfa_login', 'staging.owner.provisioned'].sort());
+    ['staging.owner.mfa_login', 'staging.owner.provisioned', 'staging.owner.case_updated'].sort());
+});
+
+
+test('operator fails closed when credentials are absent, reused or shared with citizen keys', async t => {
+  const api = await fixture(t);
+  if (!api) return;
+  const variants = [
+    env({ STAGING_OPERATOR_SESSION_KEY: '' }),
+    env({ STAGING_OPERATOR_OTP_KEY: '' }),
+    env({ STAGING_OPERATOR_TOTP_KEY: '' }),
+    env({ STAGING_OPERATOR_SESSION_KEY: 's'.repeat(48) }),
+    env({ STAGING_OPERATOR_OTP_KEY: 'o'.repeat(48) }),
+    env({ STAGING_OPERATOR_TOTP_KEY: 't'.repeat(48) }),
+    env({ STAGING_OPERATOR_SESSION_KEY: 'O'.repeat(64) }),
+  ];
+  for (const candidate of variants) {
+    const op = createStagingOperator({ env: candidate, pool: api.pool, googleVerifier });
+    assert.equal((await request(op, '/challenge', {})).status, 503);
+  }
 });
