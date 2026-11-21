@@ -81,13 +81,58 @@ python -m http.server 8097 --bind 127.0.0.1 --directory $previewRoot
 
 Review `http://127.0.0.1:8097/cyber-suraksha-2.0/google-test/en/account.html` and `/en/operator.html` as **visual source previews**. Do not authenticate from an unapproved localhost Google origin. Repeat for `hi` and `te`, desktop 1366×768 and mobile 390×844. The API integration tests require an **isolated local PostgreSQL database**: use the repository's GitHub Actions job with its disposable PostgreSQL service, or a separately prepared local database. Never run them against the live Neon staging URL.
 
+## Official project website review handoff — no deployment
+
+Download `cyber-suraksha-staging-website-review-build` from the successful
+`Account service and Pages checks` workflow on Draft PR #15. This artifact
+contains the **full rendered staging website** (citizen, independent owner
+sign-in, English/Hindi/Telugu, JavaScript/CSS), `REVIEW_ONLY.txt`, and
+`SHA256SUMS.txt` for integrity verification. It contains no operator
+password, database password, Google ID token or authenticator seed.
+
+For source-only Windows PowerShell preview, after downloading and extracting
+the artifact into a **new, empty folder**, for example `$source`:
+
+```powershell
+$ErrorActionPreference = 'Stop'
+$source = Join-Path $env:USERPROFILE 'Downloads\cyber-suraksha-staging-website-review-build'
+$previewRoot = Join-Path $env:LOCALAPPDATA 'CyberSuraksha\website-review-handoff'
+$dest = Join-Path $previewRoot 'cyber-suraksha-2.0\google-test'
+if (-not (Test-Path -LiteralPath (Join-Path $source 'en\account.html'))) {
+  throw 'Unzip the GitHub Actions website artifact into the expected source directory first'
+}
+if (Test-Path -LiteralPath $dest) { throw 'Refusing to overwrite an existing preview' }
+New-Item -ItemType Directory -Force -Path (Split-Path $dest) | Out-Null
+Copy-Item -LiteralPath $source -Destination $dest -Recurse
+python -m http.server 8097 --bind 127.0.0.1 --directory $previewRoot
+```
+
+Open `http://127.0.0.1:8097/cyber-suraksha-2.0/google-test/en/account.html`
+and the corresponding `/en/operator.html`. This **does not** authorize
+Google sign-in from localhost or any Neon write. Do not paste any real
+identity, victim or case data into the static preview.
+
+## Backup evidence — staging-only
+
+The **fresh** staging archive `staging_20261121-212741.backup` was reported as
+53,286 bytes with all six core portal tables present. An initial PostgreSQL 18
+local restore **failed** because the source archive contained the unsupported
+`pg_attver` table-column metadata. A corrected isolated restore procedure was
+provided to the owner, but the complete success evidence, record counts and
+orphan checks have **not been verified by this review**. Therefore the
+backup-restore release gate remains OPEN.
+
+The new staging archive is **not automatically encrypted**. Keep it local,
+restricted and out of public GitHub, issue discussions, build artifacts and
+CI logs.
+
 ## Exact deployment gates — NOT APPROVED
 
 Do not push `gh-pages`, merge PRs, deploy `csownerstage`, migrate Neon, rotate keys or overwrite production from this review. Before authorizing any staging change:
 
-1. Rehearse a successful restore of the existing encrypted staging backup into an **isolated** database; verify foreign keys, expected accounts and fictional case counts without revealing identities. The restore is **not yet confirmed**.
+1. Rehearse a successful restore of the fresh November 21 staging archive into an **isolated** database; verify foreign keys, expected accounts and fictional case counts without revealing identities. The restore is **not yet confirmed**.
 2. Obtain an independent code/security review for this branch and PR #12, including Google/OIDC, nonce and audience binding, owner password/TOTP, session lifecycle, CORS, audit attribution, privacy retention and case authorization.
-3. Verify all GitHub Actions checks, stage branch ID, previous deployed operator Function source/commit and the protected `gh-pages` staging prefix.
+3. Verify all GitHub Actions checks, secure edge per-client challenge throttling, stage branch ID, previous deployed operator Function source/commit and the protected `gh-pages` staging prefix.
 4. Require **new, explicit staging-only authorization** for a reviewed Function bundle update, then separately for Pages publication. Retain the existing Function environment variable **values**; do not display, copy or regenerate them.
 5. Validate real staging browsers after approved publication, keeping test/fictional data restrictions.
 
