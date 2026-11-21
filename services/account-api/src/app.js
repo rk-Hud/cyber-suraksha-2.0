@@ -442,6 +442,7 @@ export function createApi(options = {}) {
       const user = challenge.user_id ? (await db.query(userQuery + ' FOR UPDATE', [challenge.user_id])).rows[0] : null;
       if (user?.active && !await googleOnly(db, user.id)) {
         await db.query('UPDATE portal_users SET password_hash=$1, updated_at=$2, version=version+1 WHERE id=$3', [chosen, now(), user.id]);
+        await audit(db, user, 'password.reset', user.id);
         await revoke(db, user.id);
       }
       await eraseSession(db, challenge.browser_id);
@@ -455,7 +456,11 @@ export function createApi(options = {}) {
   });
   app.post('/api/v1/auth/logout', async c => {
     await body(c, []);
-    await transaction(pool, async db => { const { session } = await loadAuth(c, db); await eraseSession(db, session.id); });
+    await transaction(pool, async db => {
+      const { session, user } = await loadAuth(c, db);
+      await loginEvent(db, c, user.email, true, 'citizen_explicit_logout', user);
+      await eraseSession(db, session.id);
+    });
     return ok(c, { loggedOut: true });
   });
   app.get('/api/v1/cases', async c => {
@@ -476,6 +481,7 @@ export function createApi(options = {}) {
       await db.query(`INSERT INTO portal_case_events(id,complaint_id,actor_id,sequence,author_role,author_name,message,old_status,new_status,created_at)
         VALUES($1,$2,$3,1,'citizen',$4,$5,NULL,'pending',$6)`, [newId(), row.id, user.id, user.name, details, now()]);
       await addNotification(db, row, user.language);
+      await audit(db, user, 'case.created', row.id, { category: row.category });
       return row;
     });
     scheduleNotifications();
