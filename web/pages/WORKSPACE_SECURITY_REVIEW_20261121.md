@@ -29,6 +29,44 @@ The screenshot workflow builds actual EN/HI/TE staging HTML and captures 1366×7
 
 Look at the latest GitHub Actions conclusion on PR #15. Only a **completed success** is passing evidence, not an ongoing run.
 
+## Authentication availability hardening — review update
+
+- Public /operator/v1/challenge issuance has a widened **emergency infrastructure cap**
+  (600/minute); identity-challenge has a 900/15-minute global resource cap.
+  These limits **do not** provide guaranteed resistance to targeted distributed DoS.
+- /login now validates the nonce-bound, Google-signed and owner-pinned identity and
+  password/code shapes **before** spending the shared **8/15-minute** privileged
+  password/TOTP attempt limit. Invalid or unsigned assertions cannot exhaust
+  the private credential budget.
+- /begin checks the private approval key and verified Google identity before charging
+  the 12/15-minute bootstrap budget; /finish checks both before its 20/15-minute
+  budget. /identity-proof validates the signed owner identity before its rate budget.
+  The existing owner session-signing keys and TOTP enrollment remain unchanged.
+- The integration suite exercises repeated forged Google assertions and bad approval
+  keys, asserting the privileged rate buckets remain unused.
+- **Deployment blocker:** a public edge per-client challenge rate limit and resilience
+  policy must still be reviewed against the actual Neon Function hosting/proxy
+  configuration. Never trust caller-set X-Forwarded-For or other arbitrary headers
+  for rate enforcement. Document 429 recovery/owner access monitoring; do not
+  remove broad emergency caps without a verified replacement.
+- No live credentials were used during these tests.
+
+## Hand-off artifact for independent owner review
+
+The repository's `Account service and Pages checks` workflow produces two downloadable
+artifacts when successful:
+
+1. `cyber-suraksha-staging-website-review-build` — the actual built
+   EN/HI/TE citizen and owner staging website, including a `REVIEW_ONLY.txt`
+   and SHA-256 file manifest. The build contains no private database credentials,
+   but includes public staging endpoints and Google OAuth client identifiers.
+2. `cyber-suraksha-staging-source-previews` — 12 offline desktop/mobile browser
+   screenshots, **not** authenticated private account views.
+
+Both artifacts are manual review bundles. **Neither is a public release.**
+Do not copy these files onto the production `gh-pages` root, deploy Function code,
+rotate tokens or import any private backup merely because CI succeeds.
+
 ## Known privacy, completeness and release blockers
 
 1. The encrypted staging backup's isolated restore rehearsal is **NOT VERIFIED**. A GitHub repository cannot access the Windows DPAPI-protected backup, so source review does not satisfy this requirement.
