@@ -28,6 +28,12 @@ A GitHub Actions workflow captures **12 true source-rendered screenshots** (the 
 
 Detailed review: `web/pages/WORKSPACE_SECURITY_REVIEW_20261121.md`.
 
+The `cyber-suraksha-staging-functions-review-build` Actions artifact contains
+**two separately built source bundles** — `citizen/index.mjs` and
+`operator/index.mjs` — with SHA-256 hashes. Deploying only one would leave
+the modified citizen logout audit handlers or owner workspace unavailable.
+Neither bundle contains runtime secrets or constitutes deployment approval.
+
 ## Tests and evidence
 
 The added backend integration tests use **disposable loopback PostgreSQL**, never the Neon staging connection. They cover owner-only access, cross-bearer denial, bounded status/search parameters, case pagination over 23 fictional fixtures, SQL-injection-style text and revoked sessions. Existing tests already cover Google/TOTP, fake credential replay, isolation, case optimistic concurrency and owner logout. Additional static build tests check the tri-lingual case controls, account ID display, clear logout semantics and responsive table behavior.
@@ -133,7 +139,7 @@ Do not push `gh-pages`, merge PRs, deploy `csownerstage`, migrate Neon, rotate k
 1. Rehearse a successful restore of the fresh November 21 staging archive into an **isolated** database; verify foreign keys, expected accounts and fictional case counts without revealing identities. The restore is **not yet confirmed**.
 2. Obtain an independent code/security review for this branch and PR #12, including Google/OIDC, nonce and audience binding, owner password/TOTP, session lifecycle, CORS, audit attribution, privacy retention and case authorization.
 3. Verify all GitHub Actions checks, secure edge per-client challenge throttling, stage branch ID, previous deployed operator Function source/commit and the protected `gh-pages` staging prefix.
-4. Require **new, explicit staging-only authorization** for a reviewed Function bundle update, then separately for Pages publication. Retain the existing Function environment variable **values**; do not display, copy or regenerate them.
+4. Require **new, explicit staging-only authorization** to update BOTH independently reviewed existing Function bundles (`csgooglestage` for citizen events and `csownerstage` for owner workspace), then separate authorization for Pages publication. Capture each previously deployed Function version and retain both sets of existing environment secret **values**, never exposing, copying or regenerating them.
 5. Validate real staging browsers after approved publication, keeping test/fictional data restrictions.
 
 The predecessor file `web/pages/UNIFIED_WORKSPACE_REVIEW.md` documents the proposed staging-only release procedure. Reconcile its source branch and commit references with this branch, and obtain explicit release permission before using those commands.
