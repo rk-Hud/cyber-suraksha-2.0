@@ -38,7 +38,7 @@
   };
   const resetProof = () => { session.challenge = null; buttonHost.replaceChildren(); };
   async function beginChallenge() {
-    resetProof(); clear();
+    resetProof();
     session.mode = modeSelect.value;
     if (session.mode === 'finish' && !session.provisionId) {
       message('Start owner enrollment and scan the authenticator code before finishing.');
@@ -46,7 +46,7 @@
     }
     challengeButton.disabled = true;
     try {
-      const proof = await call('challenge', {});
+      const proof = await call(session.mode === 'identity' ? 'identity-challenge' : 'challenge', {});
       session.challenge = proof;
       message('Choose the approved Google account below. Its signed identity will be checked by the server.');
       const render = () => {
@@ -77,7 +77,14 @@
     const common = { challengeId: proof.challengeId, nonce: proof.nonce, credential };
     let request;
     try {
-      if (session.mode === 'begin') {
+      if (session.mode === 'identity') {
+        const data = await call('identity-proof', common);
+        // Display this Google-issued identifier only to the person who just signed in.
+        // It is not a password, application session or privilege grant.
+        message('Google identity verified for ' + data.verifiedEmail
+          + '. Approved Google subject (sub): ' + data.verifiedGoogleSub
+          + '. No administrator account was created.');
+      } else if (session.mode === 'begin') {
         request = { ...common, approvalKey: credentials.elements.approvalKey.value,
           password: credentials.elements.password.value,
           confirmPassword: credentials.elements.confirmPassword.value };
@@ -170,7 +177,7 @@
       ? 'Private operator service is configured. Choose your action.'
       : 'Private operator service is not enabled.');
   }).catch(() => {
-    challengeButton.disabled = true;
-    message('Private operator service is unavailable; no administrator access is active.');
+    modeSelect.value = 'identity';
+    message('Operator access is disabled. You may verify your Google identity without creating an administrator account.');
   });
 })();
