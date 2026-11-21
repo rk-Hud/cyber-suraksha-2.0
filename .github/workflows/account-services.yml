@@ -51,6 +51,34 @@ jobs:
           node --check scripts/build-staging-operator.mjs
           node scripts/build-staging-operator.mjs
           test -s dist-operator/index.mjs
+      - name: Package both staging API bundles for source review only
+        run: |
+          test -s services/account-api/dist/index.mjs
+          test -s services/account-api/dist-operator/index.mjs
+          mkdir -p /tmp/cs-function-handoff/citizen /tmp/cs-function-handoff/operator
+          cp services/account-api/dist/index.mjs /tmp/cs-function-handoff/citizen/index.mjs
+          cp services/account-api/dist-operator/index.mjs /tmp/cs-function-handoff/operator/index.mjs
+          cat > /tmp/cs-function-handoff/REVIEW_ONLY.txt <<'EOF'
+          CYBER SURAKSHA 2.0 — STAGING API BUNDLE REVIEW ONLY
+          These are two separate compiled Neon Function entrypoints:
+            citizen/index.mjs  -> existing csgooglestage (citizen login/logout audit)
+            operator/index.mjs -> existing csownerstage (owner MFA and workspace)
+          DO NOT DEPLOY. The full isolated staging backup restore is not yet verified.
+          No passwords, access tokens, TOTP secrets, Google credentials or database URLs
+          are included. Do not set up new accounts or rotate current secret values.
+          Require separately authorized deployment of EACH staging Function and
+          staged Pages after privacy, security and restore acceptance are complete.
+          EOF
+          printf 'Source commit: %s\n' "$GITHUB_SHA" >> /tmp/cs-function-handoff/REVIEW_ONLY.txt
+          ( cd /tmp/cs-function-handoff &&
+            sha256sum citizen/index.mjs operator/index.mjs > SHA256SUMS.txt )
+      - name: Upload citizen and owner Function review bundles (no deploy)
+        uses: actions/upload-artifact@v4
+        with:
+          name: cyber-suraksha-staging-functions-review-build
+          path: /tmp/cs-function-handoff/
+          if-no-files-found: error
+          retention-days: 14
       - name: Verify multilingual Pages and browser tools
         working-directory: web/pages
         run: |
