@@ -415,10 +415,11 @@ export function createStagingOperator(options = {}) {
   app.get('/operator/v1/workspace/users', async c => {
     await operatorAuth(c);
     const page = workspacePage(c);
-    const term = (c.req.query('q') || '').trim();
-    if (term.length > 80 || /[\x00-\x1f\x7f]/.test(term)) reject('operator_invalid', 400);
+    const rawTerm = c.req.query('q') || '';
+    const term = rawTerm.trim();
+    if (rawTerm.length > 80 || /[\x00-\x1f\x7f]/.test(rawTerm)) reject('operator_invalid', 400);
     const rows = (await pool.query(
-      "SELECT u.id,u.email,u.name,u.role,u.active,u.created_at,u.updated_at, "
+      "SELECT u.id,u.email,u.name,u.role,u.active,u.version,u.created_at,u.updated_at, "
       + "(SELECT max(l.created_at) FROM portal_login_events l WHERE l.user_id=u.id AND l.success=true) AS last_login_at, "
       + "(SELECT max(l.created_at) FROM portal_login_events l WHERE l.user_id=u.id AND l.success=false) AS last_failed_login_at, "
       + "(SELECT max(a.created_at) FROM portal_audit_events a WHERE a.actor_id=u.id AND a.action IN ('auth.logout','staging.owner.logout')) AS last_logout_at, "
@@ -445,6 +446,44 @@ export function createStagingOperator(options = {}) {
       [c.req.param('id'), (page-1)*PAGE_SIZE])).rows;
     return safe(c, paged(rows, page));
   });
+  // Owner-only citizen account status changes. Retain session history but expire
+  // outstanding citizen sessions/challenges on disable so re-enable cannot revive them.
+  app.patch('/operator/v1/workspace/users/:id', async c => {
+    await operatorAuth(c);
+    const id = c.req.param('id');
+    const value = await body(c, ['active', 'version']);
+    if (!identifier(id) || typeof value.active !== 'boolean'
+      || !Number.isSafeInteger(value.version) || value.version < 1)
+      reject('operator_invalid', 400);
+    await rate('owner-user-status', 12, 3600);
+    const result = await transaction(pool, async db => {
+      const actor = await operatorAuth(c, db);
+      const user = (await db.query(
+        'SELECT id,role,active,version FROM portal_users WHERE id=$1 FOR UPDATE', [id])).rows[0];
+      if (!user) reject('operator_not_found', 404);
+      if (user.role !== 'citizen' || user.id === actor.owner_id)
+        reject('operator_forbidden', 403);
+      if (Number(user.version) !== value.version)
+        reject('operator_version_conflict', 409);
+      if (user.active === value.active)
+        return { id: user.id, active: user.active, version: Number(user.version), changed: false };
+      const stamp = now(), nextVersion = Number(user.version) + 1;
+      await db.query('UPDATE portal_users SET active=$1,version=$2,updated_at=$3 WHERE id=$4',
+        [value.active, nextVersion, stamp, user.id]);
+      if (!value.active) {
+        await db.query(
+          'UPDATE portal_challenges SET expires_at=LEAST(expires_at,$2) WHERE user_id=$1 '
+          + 'OR browser_id IN (SELECT id FROM portal_sessions WHERE user_id=$1)', [user.id, stamp]);
+        await db.query('UPDATE portal_sessions SET expires_at=LEAST(expires_at,$2) '
+          + 'WHERE user_id=$1', [user.id, stamp]);
+      }
+      await audit(db, actor.owner_id,
+        value.active ? 'staging.owner.citizen_enabled' : 'staging.owner.citizen_disabled', user.id);
+      return { id: user.id, active: value.active, version: nextVersion, changed: true };
+    });
+    return safe(c, { user: result });
+  });
+
   // Searchable, server-paginated case directory; no client-side privilege checks.
   // Reuses the same fresh owner MFA gate as all other workspace views.
   app.get('/operator/v1/workspace/cases', async c => {
@@ -549,6 +588,8 @@ export function createStagingOperator(options = {}) {
       || !Number.isSafeInteger(value.version) || value.version < 1
       || typeof value.message !== 'string' || value.message.length < 3
       || value.message.length > 3000) reject('operator_invalid', 400);
+    // Reject anonymous/citizen calls before spending the owner write-rate budget.
+    await operatorAuth(c);
     await rate('case-update', 30, 3600);
     const updated = await transaction(pool, async db => {
       const actor = await operatorAuth(c, db);
