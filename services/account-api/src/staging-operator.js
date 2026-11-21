@@ -445,6 +445,27 @@ export function createStagingOperator(options = {}) {
       [c.req.param('id'), (page-1)*PAGE_SIZE])).rows;
     return safe(c, paged(rows, page));
   });
+  // Searchable, server-paginated case directory; no client-side privilege checks.
+  // Reuses the same fresh owner MFA gate as all other workspace views.
+  app.get('/operator/v1/workspace/cases', async c => {
+    await operatorAuth(c);
+    const page = workspacePage(c);
+    const term = (c.req.query('q') || '').trim();
+    const status = c.req.query('status') || 'all';
+    if (term.length > 80 || /[\\x00-\\x1f\\x7f]/.test(term)
+      || !['all', 'pending', 'in_review', 'awaiting_info', 'resolved', 'closed'].includes(status))
+      reject('operator_invalid', 400);
+    const rows = (await pool.query(
+      `SELECT c.id,c.reference,c.subject,c.category,c.status,c.version,c.created_at,c.updated_at
+       FROM portal_complaints c
+       WHERE ($1='' OR position(lower($1) in lower(c.reference))>0
+          OR position(lower($1) in lower(c.subject))>0)
+         AND ($2='all' OR c.status=$2)
+       ORDER BY c.updated_at DESC,c.id DESC LIMIT 21 OFFSET $3`,
+      [term, status, (page - 1) * PAGE_SIZE])).rows;
+    return safe(c, { ...paged(rows, page), search: term, status });
+  });
+
   app.get('/operator/v1/workspace/events', async c => {
     await operatorAuth(c);
     const page = workspacePage(c);
