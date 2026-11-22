@@ -51,6 +51,34 @@ jobs:
           node --check scripts/build-staging-operator.mjs
           node scripts/build-staging-operator.mjs
           test -s dist-operator/index.mjs
+      - name: Package both staging API bundles for source review only
+        run: |
+          test -s services/account-api/dist/index.mjs
+          test -s services/account-api/dist-operator/index.mjs
+          mkdir -p /tmp/cs-function-handoff/citizen /tmp/cs-function-handoff/operator
+          cp services/account-api/dist/index.mjs /tmp/cs-function-handoff/citizen/index.mjs
+          cp services/account-api/dist-operator/index.mjs /tmp/cs-function-handoff/operator/index.mjs
+          cat > /tmp/cs-function-handoff/REVIEW_ONLY.txt <<'EOF'
+          CYBER SURAKSHA 2.0 — STAGING API BUNDLE REVIEW ONLY
+          These are two separate compiled Neon Function entrypoints:
+            citizen/index.mjs  -> existing csgooglestage (citizen login/logout audit)
+            operator/index.mjs -> existing csownerstage (owner MFA and workspace)
+          DO NOT DEPLOY. The full isolated staging backup restore is not yet verified.
+          No passwords, access tokens, TOTP secrets, Google credentials or database URLs
+          are included. Do not set up new accounts or rotate current secret values.
+          Require separately authorized deployment of EACH staging Function and
+          staged Pages after privacy, security and restore acceptance are complete.
+          EOF
+          printf 'PR head commit: %s\n' "${{ github.event.pull_request.head.sha || github.sha }}" >> /tmp/cs-function-handoff/REVIEW_ONLY.txt
+          ( cd /tmp/cs-function-handoff &&
+            sha256sum citizen/index.mjs operator/index.mjs > SHA256SUMS.txt )
+      - name: Upload citizen and owner Function review bundles (no deploy)
+        uses: actions/upload-artifact@v4
+        with:
+          name: cyber-suraksha-staging-functions-review-build
+          path: /tmp/cs-function-handoff/
+          if-no-files-found: error
+          retention-days: 14
       - name: Verify multilingual Pages and browser tools
         working-directory: web/pages
         run: |
@@ -63,3 +91,43 @@ jobs:
           test -s /tmp/cs-operator-pages-ci/en/operator.html
           test -s /tmp/cs-operator-pages-ci/static/js/operator.js
           python -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Package the reviewed staging website (not deployed)
+        run: |
+          test -s /tmp/cs-operator-pages-ci/en/account.html
+          test -s /tmp/cs-operator-pages-ci/en/operator.html
+          test -s /tmp/cs-operator-pages-ci/hi/account.html
+          test -s /tmp/cs-operator-pages-ci/te/account.html
+          cat > /tmp/cs-operator-pages-ci/REVIEW_ONLY.txt <<'EOF'
+          CYBER SURAKSHA 2.0 — SOURCE-ONLY WEBSITE HANDOFF
+          This artifact is the independently operated staging citizen and administrator website.
+          It is NOT an official government/police reporting portal.
+          It is NOT deployed and must accept fictional data only.
+          Never publish until the locally restored backup and authorized Google/TOTP sign-ins
+          are verified, independent privacy/security review completed and release approved.
+          EOF
+          printf 'PR head commit: %s\n' "${{ github.event.pull_request.head.sha || github.sha }}" >> /tmp/cs-operator-pages-ci/REVIEW_ONLY.txt
+          ( cd /tmp/cs-operator-pages-ci &&
+            find . -type f ! -name 'SHA256SUMS.txt' -print0 |
+            sort -z | xargs -0 sha256sum > SHA256SUMS.txt )
+      - name: Upload reviewed website files for manual handoff (no publish)
+        uses: actions/upload-artifact@v4
+        with:
+          name: cyber-suraksha-staging-website-review-build
+          path: /tmp/cs-operator-pages-ci/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
+      - name: Capture real staging source UI in isolated Chromium (no API traffic)
+        run: |
+          python -m pip install 'playwright>=1.52,<2'
+          python -m playwright install --with-deps chromium
+          python web/pages/scripts/capture_workspace_previews.py \
+            --source /tmp/cs-operator-pages-ci \
+            --output /tmp/cs-workspace-source-previews
+      - name: Upload offline source screenshot evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: cyber-suraksha-staging-source-previews
+          path: /tmp/cs-workspace-source-previews/
+          if-no-files-found: error
+          retention-days: 14
