@@ -1,10 +1,39 @@
+<p align="center"><img src="docs/assets/cyber-suraksha-banner.svg" alt="CYBER SURAKSHA 2.0" width="100%"></p>
+
 # CYBER SURAKSHA 2.0
+### From Cyber Fraud Awareness to Intelligent Cybercrime Prevention & Response
 
-Independent cybersecurity awareness and private support, architected, developed, authored and owned by **Jatoth Ramakrishna**. This project has no institutional partner, corporate sponsor, government endorsement or external funding.
+Independent cybersecurity awareness, training and private support platform. Project owner: **Jatoth Ramakrishna**. No institutional affiliation, government endorsement or external funding is claimed.
 
-**Website:** [rk-hud.github.io/cyber-suraksha-2.0](https://rk-hud.github.io/cyber-suraksha-2.0/) · [Citizen services](https://rk-hud.github.io/cyber-suraksha-2.0/en/account.html) · [Deployment status](docs/ACCOUNT_SERVICE_STATUS.md)
+**[Public website](https://rk-hud.github.io/cyber-suraksha-2.0/) · [Staging citizen services](https://rk-hud.github.io/cyber-suraksha-2.0/google-test/en/account.html) · [Staging administrator workspace](https://rk-hud.github.io/cyber-suraksha-2.0/google-test/en/operator.html) · [Release evidence](docs/STAGING_RELEASE_2026-11-22.md) · [Security policy](SECURITY.md)**
 
-English, Hindi and Telugu pages provide fraud-awareness exercises, a warning-sign checker, an action planner and twenty official resource links. The checker and planner work locally in browser memory. Account forms use a separate authenticated API; account details and submitted support cases are stored privately on the service.
+> **Staging demonstration:** fictional records only. This is not a government or police reporting portal. Never submit real victim or financial information. In India, contact your bank immediately for financial fraud, call **1930**, and use [cybercrime.gov.in](https://cybercrime.gov.in/).
+
+## Platform capabilities
+
+| Public awareness | Citizen workspace | Restricted owner workspace |
+| --- | --- | --- |
+| Scam warning signs and checker | Google sign-in in staging | Separate Google, password and TOTP |
+| Action planner and quiz | Fictional complaint submission | Citizen directory and case search |
+| English, Hindi and Telugu | Private status tracking and replies | Original complaint and activity history |
+| Official resource references | Session-based access | Status updates, sessions and audit history |
+
+## Architecture
+
+![Staging deployment architecture](docs/assets/staging-architecture.svg)
+
+GitHub Pages serves the static multilingual website. The staging Cloudflare Worker routes allowlisted requests to separate Neon Functions (Node.js 24), with private upstream credentials and rate limiting. PostgreSQL stores staging records. Existing owner access remains separate from citizen sessions.
+
+## Delivery status
+
+| Area | Status |
+| --- | --- |
+| Unified staging website and both APIs | Deployed; owner-reported functional evidence |
+| Gateway credential enforcement | Tested for unauthenticated and direct-origin requests |
+| Backup and isolated restore | Open — restore not verified |
+| Production readiness | Not approved; additional privacy/security acceptance required |
+
+[Staging evidence and limitations](docs/STAGING_RELEASE_2026-11-22.md) · [Acceptance tracker](https://github.com/rk-Hud/cyber-suraksha-2.0/issues/9) · [Recovery review](https://github.com/rk-Hud/cyber-suraksha-2.0/pull/11)
 
 ## Source map
 

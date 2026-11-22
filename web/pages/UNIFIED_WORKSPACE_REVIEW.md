@@ -1,5 +1,8 @@
 # CYBER SURAKSHA 2.0 — Unified Citizen / Owner Workspace (staging source)
 
+**Important:** This is an older, **unapproved** reference release recipe from PR #12. For current review branch status, owner enable/disable semantics and immutable screenshot/rollback checks, follow `web/pages/WORKSPACE_HARDENING_REVIEW.md` and `web/pages/WORKSPACE_SECURITY_REVIEW_20261121.md`. Never run the recipe before an independently verified isolated backup restore and new staging-only approval.
+
+
 **Status: source review only. NOT DEPLOYED.** This PR is stacked onto staging operator PR #10.
 It does not authorize Neon deployment, SQL migration, public release, or any cost-bearing service.
 
@@ -91,9 +94,10 @@ after separately approved staging publication.
 
 ## Staging release safety gates (DO NOT RUN WITHOUT APPROVAL)
 
-1. Verify the encrypted staging `pg_dump` can be restored into an
-   **isolated** database. The earlier DPAPI backup listing passed, but its
-   restore rehearsal has **not** passed.
+1. Verify the **fresh, unencrypted** Nov 21 staging `pg_dump` can be restored
+   into an **isolated** database. Its archive/table listing passed, but its
+   corrected full restore and integrity results have **not been independently verified**.
+   Keep the backup restricted locally and out of public source.
 2. Obtain independent security review of this PR and predecessor PR #10,
    especially role isolation, CORS, CSRF, Google ID-token nonce, TOTP,
    audit logging and session expiration.
@@ -101,10 +105,13 @@ after separately approved staging publication.
 4. Confirm linked Neon project `frosty-band-01793215` and **staging branch**
    `br-sweet-band-azhwai4r`; never target the production branch.
 5. Run the GitHub Actions disposable PostgreSQL tests.
-6. With *separate explicit release approval*, build the operator bundle
-   locally and deploy **only** the existing `csownerstage` Function,
-   retaining already configured environment keys. Never put keys in chat,
-   GitHub Actions logs or commits.
+6. With *separate explicit release approval*, build **both separate** Function
+   bundles using the reviewed source. The changed citizen logout/password-reset
+   audit handlers require updating existing `csgooglestage`, while the owner
+   dashboard and rate hardening require updating existing `csownerstage`.
+   Release each **only to the existing staging branch**, never production.
+   Capture the known-good version of **each** before any release, preserve
+   configured keys, and never place secrets in repositories or build logs.
 7. With separate Pages approval, publish the reviewed staging site under
    `docs/google-test/` on `gh-pages`. Use the same four owner/page file
    review procedure as prior staging publication, plus newly changed citizen
@@ -113,92 +120,33 @@ after separately approved staging publication.
    logout distinction, case optimistic locking and audit chronology.
 
 
-## Exact staging-only publication recipe (NOT AUTHORIZED BY THIS PR)
+## Retired publication recipe — reference only, DO NOT EXECUTE
 
-**Do not execute this release section now.** First complete the independent
-restore rehearsal, privacy review, authorization tests, reviewed build SHA
-record, and explicit release approval. The following is limited to the
-\`google-test\` staging prefix and existing \`csownerstage\` Function.
+An earlier single-Function publication recipe was removed from this review
+because it would deploy only `csownerstage` and not the modified citizen
+`csgooglestage` logout/audit handlers, creating an inconsistent staging
+release. That recipe also checked out PR #12 rather than the final stacked
+hardening branch. Running it would not publish the reviewed version.
 
-\`\`\`powershell
-& {
-  $ErrorActionPreference = "Stop"
-  $review = Join-Path $env:USERPROFILE "Documents\CYBER_SURAKSHA_UNIFIED_REVIEW"
-  $accountApi = Join-Path $review "services\account-api"
-  $pagesSource = Join-Path $review "web\pages"
-  $pagesRepo = Join-Path $env:USERPROFILE "Documents\CYBER_SURAKSHA_UNIFIED_PUBLISH"
-  $root = Join-Path $env:LOCALAPPDATA "CyberSuraksha\unified-approved-build"
-  $output = Join-Path $root "cyber-suraksha-2.0\google-test"
+The safe, current handoff is **three independent build outputs** produced
+without deployment by GitHub Actions on the latest reviewed PR #15 commit:
 
-  $approval = Read-Host "Type RELEASE-STAGING-ONLY if an independently reviewed restorable backup and deployment approval exist"
-  if ($approval -cne "RELEASE-STAGING-ONLY") { throw "STOP: Not approved" }
-  if (Test-Path $output -or Test-Path $pagesRepo) {
-    throw "STOP: A release path already exists. No overwrites allowed."
-  }
-  if (-not (Test-Path $accountApi) -or -not (Test-Path $pagesSource)) {
-    throw "STOP: The reviewed checkout is missing."
-  }
-  Set-Location $review
-  if ((git branch --show-current) -ne "feature/unified-workspace-audit-20261121") {
-    throw "STOP: Not on the reviewed source branch"
-  }
-  if ((git status --porcelain).Length -ne 0) { throw "STOP: Dirty checkout" }
+- `cyber-suraksha-staging-website-review-build` — standalone static
+  staging site (English, Hindi, Telugu citizen and owner pages).
+- `cyber-suraksha-staging-functions-review-build` — two separate
+  `citizen/index.mjs` and `operator/index.mjs` bundles, with SHA-256
+  manifests. Neither contains Function runtime secrets.
+- `cyber-suraksha-staging-source-previews` — 12 isolated desktop/mobile
+  sign-in screenshots. Not proof of real owner MFA.
 
-  Set-Location $accountApi
-  npm.cmd ci
-  npm.cmd run check
-  npm.cmd test
-  if ($LASTEXITCODE -ne 0) { throw "STOP: Backend checks failed" }
-  node .\scripts\build-staging-operator.mjs
-  if ($LASTEXITCODE -ne 0) { throw "STOP: Operator build failed" }
-
-  Set-Location $pagesSource
-  npm.cmd ci
-  npm.cmd test
-  npm.cmd run verify
-  if ($LASTEXITCODE -ne 0) { throw "STOP: Pages tests failed" }
-  python .\scripts\export_site.py --config .\config\google-test.json --output $output
-  if ($LASTEXITCODE -ne 0) { throw "STOP: Staging export failed" }
-
-  # Explicitly reviewed, separate operator Function deployment to the
-  # existing staging branch. No secret is printed or sent in commands.
-  Set-Location $accountApi
-  neon.cmd functions deploy csownerstage \`
-      --project-id frosty-band-01793215 \`
-      --branch br-sweet-band-azhwai4r \`
-      --src ".\dist-operator\index.mjs" --no-bundle
-  if ($LASTEXITCODE -ne 0) { throw "STOP: Operator staging deploy failed" }
-
-  # Review the entire isolated staging prefix before any GitHub Pages push.
-  Set-Location (Join-Path $env:USERPROFILE "Documents")
-  git clone --single-branch --branch gh-pages \`
-      https://github.com/rk-Hud/cyber-suraksha-2.0.git $pagesRepo
-  if ($LASTEXITCODE -ne 0) { throw "STOP: Publish checkout failed" }
-  $destination = Join-Path $pagesRepo "docs\google-test"
-  Copy-Item -Path (Join-Path $output "*") -Destination $destination -Recurse -Force
-  Set-Location $pagesRepo
-  git add -- docs/google-test
-  $changed = @(git diff --cached --name-only)
-  if (-not $changed.Count -or @($changed | Where-Object { $_ -notlike "docs/google-test/*" }).Count -gt 0) {
-    throw "STOP: Unexpected or missing staging-only file changes"
-  }
-  git diff --cached --stat
-  $publish = Read-Host "Inspect every change. Type PUBLISH-REVIEWED-STAGING to push ONLY the listed staged paths"
-  if ($publish -cne "PUBLISH-REVIEWED-STAGING") { throw "STOP: Nothing pushed" }
-  git commit -m "Publish reviewed unified staging-only owner workspace"
-  if ($LASTEXITCODE -ne 0) { throw "STOP: Commit failed" }
-  git push origin gh-pages
-  if ($LASTEXITCODE -ne 0) { throw "STOP: Push failed" }
-  Write-Host "Staging publication commit: $(git rev-parse HEAD)"
-}
-\`\`\`
-
-The current production source branch, public \`docs/\` site root and production
-Neon branch are NOT destinations. The Function deployment step can become
-active before the Pages push, so arrange the release as a short, monitored
-maintenance window with rollback prepared in advance. The operator
-deployment retains existing Neon environment variables, which must be
-verified via variable **names only** before release.
+A future authorized staging release requires a verified immutable snapshot
+of the current `csgooglestage` and `csownerstage` Function versions,
+a successful local **restricted and isolated** restore of current staging's private archive,
+independent Google/TOTP and privacy review, and **separate explicit owner
+approval** for each Function deployment and staging Pages publication.
+Never alter the production Neon branch or `gh-pages` public site root.
+Rebuild and review deployment commands against the then-current Neon CLI;
+do not reuse obsolete single-Function commands.
 
 ## Exact staging Pages rollback (only after a published staging commit)
 
@@ -235,10 +183,10 @@ assumed.
 - GitHub Pages staging: identify the exact publication commit in the
   `gh-pages` history; use a **revert commit**, not force push. Verify
   that citizen sign-in continues to work.
-- Neon operator Function: rebuild the *previous reviewed staging source*
-  (PR #10 base commit) and redeploy it to the **same staging branch**,
-  preserving current secret variables. Never reset the branch or restore
-  production. Verify operator /health and owner role before and after.
+- Neon citizen and owner Functions: rebuild each **exact last-known-good
+  deployed** staging Function separately; any rollback must preserve the
+  original credentials and never reset the Neon branch, wipe cases or touch
+  production. Verify both health endpoints and account role isolation.
 - No schema rollback is needed for this PR because it has **no DDL**.
 - If already-issued bearer sessions must be revoked after a security
   incident, follow the independent emergency response review; do not
