@@ -1,39 +1,64 @@
 # CYBER SURAKSHA 2.0
 
-Independent cybersecurity awareness and private support, architected, developed, authored and owned by **Jatoth Ramakrishna**. This project has no institutional partner, corporate sponsor, government endorsement or external funding.
+![CYBER SURAKSHA 2.0 — Independent cybersecurity awareness and response](docs/assets/cyber-suraksha-banner.svg)
 
-**Website:** [rk-hud.github.io/cyber-suraksha-2.0](https://rk-hud.github.io/cyber-suraksha-2.0/) · [Citizen services](https://rk-hud.github.io/cyber-suraksha-2.0/en/account.html) · [Deployment status](docs/ACCOUNT_SERVICE_STATUS.md)
+## From Cyber Fraud Awareness to Intelligent Cybercrime Prevention & Response
 
-English, Hindi and Telugu pages provide fraud-awareness exercises, a warning-sign checker, an action planner and twenty official resource links. The checker and planner work locally in browser memory. Account forms use a separate authenticated API; account details and submitted support cases are stored privately on the service.
+An independently operated cybersecurity awareness, education and fictional incident-response platform. Owned by Jatoth Ramakrishna. No institutional partnership, government endorsement or external funding is claimed.
+
+[Public website](https://rk-hud.github.io/cyber-suraksha-2.0/) · [Staging citizen workspace](https://rk-hud.github.io/cyber-suraksha-2.0/google-test/en/account.html) · [Staging administrator workspace](https://rk-hud.github.io/cyber-suraksha-2.0/google-test/en/operator.html) · [Deployment record](docs/STAGING_RELEASE_20261122.md)
+
+![License](https://img.shields.io/badge/license-MIT-blue) ![Stage](https://img.shields.io/badge/release-staging-teal) ![Languages](https://img.shields.io/badge/languages-EN%20%7C%20HI%20%7C%20TE-blue)
+
+> Independent project, not a government or police reporting service. Staging accepts fictional records only. For real cybercrime in India, use [cybercrime.gov.in](https://cybercrime.gov.in/) or call **1930**; contact your bank promptly for financial fraud.
+
+## Platform capabilities
+
+| Citizen services | Secure administrator workspace |
+| --- | --- |
+| Google sign-in in restricted staging | Separate verified Google identity, password and TOTP |
+| Fictional complaint registration and tracking | Searchable case directory and complete complaint history |
+| Private case timeline and replies | Registered users, authentication activity and sessions |
+| Fraud-awareness checker and action planner | Case status updates and audit history |
+| English, Hindi and Telugu content | Fresh MFA and separate authorization |
+
+## Architecture
+
+![Platform architecture illustration](docs/assets/platform-architecture.svg)
+
+The staging browser communicates with a Cloudflare Worker, which forwards permitted routes to separate Neon citizen and owner Functions. A private server-side credential protects origin application routes; user authentication and authorization remain separate. Health routes are intentionally accessible. Native Neon invocation URLs remain reachable at the network layer.
+
+![Administrator authentication flow illustration](docs/assets/owner-access-flow.svg)
+
+## Website and demonstration
+
+| Environment | Link | Scope |
+| --- | --- | --- |
+| Public awareness website | [Open website](https://rk-hud.github.io/cyber-suraksha-2.0/) | Public educational content |
+| Citizen staging | [Citizen services](https://rk-hud.github.io/cyber-suraksha-2.0/google-test/en/account.html) | Restricted Google sign-in; fictional cases |
+| Owner staging | [Administrator workspace](https://rk-hud.github.io/cyber-suraksha-2.0/google-test/en/operator.html) | Authorized owner only |
+
+The illustrations above are explanatory graphics, not screenshots. Authenticated screenshots should be cropped and redacted before publication.
 
 ## Source map
 
-| Component | Source | Hosting |
-| --- | --- | --- |
-| Multilingual website and account interface | [web/pages](web/pages/) | GitHub Pages |
-| Authentication, private cases and owner authorization | [services/account-api](services/account-api/) | Neon Function, Node.js 24 |
-| Accounts, case history, notifications and audit records | [Schema](services/account-api/sql/001-existing-portal.sql) | Neon PostgreSQL |
-| Previous owner portal | [deploy/citizen-owner-portal](deploy/citizen-owner-portal/) | Existing Render service, retained during migration |
-| Earlier applications | [deploy](deploy/), [upgrades](upgrades/), [app.py](app.py) | Historical reference; deployment-specific instructions apply |
+| Component | Source |
+| --- | --- |
+| Multilingual interface | [web/pages](web/pages/) |
+| Citizen and owner APIs | [services/account-api](services/account-api/) |
+| Edge gateway | [Worker source](services/account-api/gateway/worker.mjs) |
+| Database schema | [SQL](services/account-api/sql/) |
+| Deployment evidence | [Staging release record](docs/STAGING_RELEASE_20261122.md) |
+| Earlier applications | [deploy](deploy/), [upgrades](upgrades/), [app.py](app.py) |
 
-## Accounts and administration
+## Verification and development
 
-The account service implements password plus email OTP, password recovery, private complaint submission, case timelines and replies. The owner dashboard requires the configured owner identity and a recent authenticator code before viewing user records, changing cases or editing content. Passwords, OTPs and signing keys are never shown in the dashboard.
+Run `npm ci`, `npm run check`, `npm test` and `npm run build` in `services/account-api`. Database tests require a disposable PostgreSQL database. Inside `web/pages`, install Python dependencies from `requirements-build.txt`, run `npm ci`, `npm test`, `npm run build` and `npm run verify`. Staging build configuration is `config/google-test.json`. Never publish credentials or case exports.
 
-Deployment and activation are separate: **public registration stays closed while email sending is unconfigured**. The [status record](docs/ACCOUNT_SERVICE_STATUS.md) states what is deployed and what needs private configuration. No email is presented as sent when a provider rejected it. Existing owner MFA is preserved during migration.
+See [CI](.github/workflows/account-services.yml), [security policy](SECURITY.md), [API contract](services/account-api/API.md), [deployment guidance](DEPLOYMENT.md) and [release acceptance](https://github.com/rk-Hud/cyber-suraksha-2.0/issues/9).
 
-See the [operator guide](docs/ACCOUNT_SERVICE_OPERATIONS.md), [API contract](services/account-api/API.md), [security policy](SECURITY.md) and [verification workflow](.github/workflows/account-services.yml).
+## Release boundaries
 
-## Local verification
+Staging login, dashboard and complaint detail display were demonstrated on 22 November 2026. Direct-origin rejection and gateway authentication were tested. A successful isolated backup restoration, independent security assessment and production authorization remain outstanding. Email delivery is not claimed. The warning-sign checker provides educational guidance, not a fraud probability or guarantee.
 
-Run `npm ci`, `npm run check`, `npm test` and `npm run build` inside `services/account-api`. Database tests need an explicitly configured disposable PostgreSQL database; CI requires them rather than silently accepting skipped checks.
-
-Inside `web/pages`, install `requirements-build.txt` with Python, run `npm ci`, then `npm test`, `npm run build` and `npm run verify`. Publish only the generated static output to Pages. Never publish credentials, database URLs, account exports or complaint records.
-
-## Service boundary
-
-Support requests go to the independent project owner. They are not police complaints and do not guarantee investigation or recovery. In India, report real cybercrime through [cybercrime.gov.in](https://cybercrime.gov.in/), contact your bank about financial fraud, and call **1930**.
-
-A warning score is a prompt to verify, not a probability of fraud or a safety certificate. The checker cannot know every safe or malicious URL worldwide. Pasted links are not opened.
-
-Copyright © 2026 Jatoth Ramakrishna. The [MIT License](LICENSE) governs software reuse. Third-party dependencies and media retain their own licenses. [Copyright preparation](docs/COPYRIGHT_REGISTRATION_PREPARATION.md) records the evidence needed for legal declarations.
+Copyright © 2026 Jatoth Ramakrishna. Software reuse is governed by the [MIT License](LICENSE); third-party materials retain their respective licenses. See [copyright preparation](docs/COPYRIGHT_REGISTRATION_PREPARATION.md).

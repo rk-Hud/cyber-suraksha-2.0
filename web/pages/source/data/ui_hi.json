@@ -468,6 +468,8 @@
   "unified_dash_sessions": "सत्र",
   "unified_dash_cases": "काल्पनिक मामले",
   "unified_dash_audit": "ऑडिट इतिहास",
+  "unified_dash_case_search": "काल्पनिक मामले खोजें",
+  "unified_dash_case_search_placeholder": "संदर्भ या विषय",
   "unified_dash_search": "उपयोगकर्ता खोजें",
   "unified_dash_search_placeholder": "नाम या ईमेल खोजें",
   "unified_dash_filter": "गतिविधि फ़िल्टर करें",

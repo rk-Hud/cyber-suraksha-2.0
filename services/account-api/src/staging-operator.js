@@ -203,7 +203,9 @@ export function createStagingOperator(options = {}) {
     await body(c, []);
     if (env.STAGING_BRANCH_ID !== BRANCH || !config.googleClientId || !settings.email)
       reject('operator_disabled', 503);
-    await rate('operator-identity-challenge', 12, 900);
+    // Public nonce issuance is capped as an emergency resource safety limit, not an
+    // authentication-attempt lockout. Edge-side per-client throttling remains necessary.
+    await rate('operator-identity-challenge', 900, 900);
     const id = newId(), nonce = newToken(), expiresAt = now() + 300;
     await pool.query('INSERT INTO cs_stage_operator_challenges(id,nonce_hash,created_at,expires_at) '
       + 'VALUES($1,$2,$3,$4)', [id, hashed('nonce', nonce), now(), expiresAt]);
@@ -213,7 +215,6 @@ export function createStagingOperator(options = {}) {
     const value = await body(c, ['challengeId', 'nonce', 'credential']);
     if (env.STAGING_BRANCH_ID !== BRANCH || !config.googleClientId || !settings.email)
       reject('operator_disabled', 503);
-    await rate('operator-identity-proof', 12, 900);
     if (!identifier(value.challengeId) || typeof value.nonce !== 'string'
       || !/^[A-Za-z0-9_-]{43}$/.test(value.nonce)) reject();
     const challenge = (await pool.query(
@@ -231,12 +232,18 @@ export function createStagingOperator(options = {}) {
     const citizen = await pool.query(
       'SELECT 1 FROM portal_google_identities WHERE google_sub=$1 LIMIT 1', [google.subject]);
     if (citizen.rowCount) reject('operator_forbidden', 403);
+    // Only cryptographically verified Google assertions may spend the shared
+    // identity-proof budget; anonymous requests cannot lock out the owner.
+    await rate('operator-identity-proof', 12, 900);
     await transaction(pool, async db => { await consumeProof(db, value); });
     return safe(c, { verifiedEmail, verifiedGoogleSub: google.subject, operatorEnrolled: false });
   });
   app.post('/operator/v1/challenge', async c => {
     ready(); await body(c, []);
-    await rate('challenge', 30, 60);
+    // Keep a broad infrastructure safety cap; never let a handful of anonymous
+    // challenge requests consume the owner's small credential-attempt budget.
+    // Configure upstream per-client throttling before deploying publicly.
+    await rate('challenge', 600, 60);
     const id = newId(), nonce = newToken(), expiresAt = now() + 300;
     await pool.query('INSERT INTO cs_stage_operator_challenges(id,nonce_hash,created_at,expires_at) '
       + 'VALUES($1,$2,$3,$4)', [id, hashed('nonce', nonce), now(), expiresAt]);
@@ -245,10 +252,12 @@ export function createStagingOperator(options = {}) {
   app.post('/operator/v1/begin', async c => {
     ready();
     const value = await body(c, ['challengeId', 'nonce', 'credential', 'approvalKey', 'password', 'confirmPassword']);
-    await rate('begin', 12, 900);
     secureApproval(value.approvalKey);
     password(value.password, value.confirmPassword);
     const google = await credentialProof(value);
+    // Require BOTH the private approval secret and signed Google identity
+    // before charging the privileged bootstrap budget.
+    await rate('begin', 12, 900);
     const secret = generateTotpSecret();
     const encrypted = encryptTotp(secret, config.totpKey);
     const passwordHash = await hashPassword(value.password);
@@ -272,11 +281,11 @@ export function createStagingOperator(options = {}) {
   app.post('/operator/v1/finish', async c => {
     ready();
     const value = await body(c, ['challengeId', 'nonce', 'credential', 'approvalKey', 'provisionId', 'code']);
-    await rate('finish', 20, 900);
     secureApproval(value.approvalKey);
     await credentialProof(value);
     if (!identifier(value.provisionId) || typeof value.code !== 'string'
       || !/^[0-9]{6}$/.test(value.code)) reject();
+    await rate('finish', 20, 900);
     const result = await transaction(pool, async db => {
       await db.query("SELECT pg_advisory_xact_lock(hashtextextended('cs-stage:owner:bootstrap',0))");
       await consumeProof(db, value);
@@ -311,10 +320,12 @@ export function createStagingOperator(options = {}) {
   app.post('/operator/v1/login', async c => {
     ready();
     const value = await body(c, ['challengeId', 'nonce', 'credential', 'password', 'code']);
-    await rate('login', 8, 900);
     await credentialProof(value);
     if (typeof value.password !== 'string' || value.password.length > 128
       || typeof value.code !== 'string' || !/^[0-9]{6}$/.test(value.code)) reject();
+    // Authenticate the signed, nonce-bound Google assertion FIRST. Unverified
+    // clients cannot exhaust the owner's 8-attempt password/TOTP budget.
+    await rate('login', 8, 900);
     const candidate = (await pool.query(
       "SELECT * FROM portal_users WHERE email=$1 AND role='owner' AND active=true",
       [settings.email])).rows[0];
@@ -415,10 +426,11 @@ export function createStagingOperator(options = {}) {
   app.get('/operator/v1/workspace/users', async c => {
     await operatorAuth(c);
     const page = workspacePage(c);
-    const term = (c.req.query('q') || '').trim();
-    if (term.length > 80 || /[\x00-\x1f\x7f]/.test(term)) reject('operator_invalid', 400);
+    const rawTerm = c.req.query('q') || '';
+    const term = rawTerm.trim();
+    if (rawTerm.length > 80 || /[\x00-\x1f\x7f]/.test(rawTerm)) reject('operator_invalid', 400);
     const rows = (await pool.query(
-      "SELECT u.id,u.email,u.name,u.role,u.active,u.created_at,u.updated_at, "
+      "SELECT u.id,u.email,u.name,u.role,u.active,u.version,u.created_at,u.updated_at, "
       + "(SELECT max(l.created_at) FROM portal_login_events l WHERE l.user_id=u.id AND l.success=true) AS last_login_at, "
       + "(SELECT max(l.created_at) FROM portal_login_events l WHERE l.user_id=u.id AND l.success=false) AS last_failed_login_at, "
       + "(SELECT max(a.created_at) FROM portal_audit_events a WHERE a.actor_id=u.id AND a.action IN ('auth.logout','staging.owner.logout')) AS last_logout_at, "
@@ -445,6 +457,66 @@ export function createStagingOperator(options = {}) {
       [c.req.param('id'), (page-1)*PAGE_SIZE])).rows;
     return safe(c, paged(rows, page));
   });
+  // Owner-only citizen account status changes. Retain session history but expire
+  // outstanding citizen sessions/challenges on disable so re-enable cannot revive them.
+  app.patch('/operator/v1/workspace/users/:id', async c => {
+    await operatorAuth(c);
+    const id = c.req.param('id');
+    const value = await body(c, ['active', 'version']);
+    if (!identifier(id) || typeof value.active !== 'boolean'
+      || !Number.isSafeInteger(value.version) || value.version < 1)
+      reject('operator_invalid', 400);
+    await rate('owner-user-status', 12, 3600);
+    const result = await transaction(pool, async db => {
+      const actor = await operatorAuth(c, db);
+      const user = (await db.query(
+        'SELECT id,role,active,version FROM portal_users WHERE id=$1 FOR UPDATE', [id])).rows[0];
+      if (!user) reject('operator_not_found', 404);
+      if (user.role !== 'citizen' || user.id === actor.owner_id)
+        reject('operator_forbidden', 403);
+      if (Number(user.version) !== value.version)
+        reject('operator_version_conflict', 409);
+      if (user.active === value.active)
+        return { id: user.id, active: user.active, version: Number(user.version), changed: false };
+      const stamp = now(), nextVersion = Number(user.version) + 1;
+      await db.query('UPDATE portal_users SET active=$1,version=$2,updated_at=$3 WHERE id=$4',
+        [value.active, nextVersion, stamp, user.id]);
+      if (!value.active) {
+        await db.query(
+          'UPDATE portal_challenges SET expires_at=LEAST(expires_at,$2) WHERE user_id=$1 '
+          + 'OR browser_id IN (SELECT id FROM portal_sessions WHERE user_id=$1)', [user.id, stamp]);
+        await db.query('UPDATE portal_sessions SET expires_at=LEAST(expires_at,$2) '
+          + 'WHERE user_id=$1', [user.id, stamp]);
+      }
+      await audit(db, actor.owner_id,
+        value.active ? 'staging.owner.citizen_enabled' : 'staging.owner.citizen_disabled', user.id);
+      return { id: user.id, active: value.active, version: nextVersion, changed: true };
+    });
+    return safe(c, { user: result });
+  });
+
+  // Searchable, server-paginated case directory; no client-side privilege checks.
+  // Reuses the same fresh owner MFA gate as all other workspace views.
+  app.get('/operator/v1/workspace/cases', async c => {
+    await operatorAuth(c);
+    const page = workspacePage(c);
+    const rawTerm = c.req.query('q') || '';
+    const term = rawTerm.trim();
+    const status = c.req.query('status') || 'all';
+    if (rawTerm.length > 80 || /[\x00-\x1f\x7f]/.test(rawTerm)
+      || !['all', 'pending', 'in_review', 'awaiting_info', 'resolved', 'closed'].includes(status))
+      reject('operator_invalid', 400);
+    const rows = (await pool.query(
+      `SELECT c.id,c.reference,c.subject,c.category,c.status,c.version,c.created_at,c.updated_at
+       FROM portal_complaints c
+       WHERE ($1='' OR position(lower($1) in lower(c.reference))>0
+          OR position(lower($1) in lower(c.subject))>0)
+         AND ($2='all' OR c.status=$2)
+       ORDER BY c.updated_at DESC,c.id DESC LIMIT 21 OFFSET $3`,
+      [term, status, (page - 1) * PAGE_SIZE])).rows;
+    return safe(c, { ...paged(rows, page), search: term, status });
+  });
+
   app.get('/operator/v1/workspace/events', async c => {
     await operatorAuth(c);
     const page = workspacePage(c);
@@ -527,6 +599,8 @@ export function createStagingOperator(options = {}) {
       || !Number.isSafeInteger(value.version) || value.version < 1
       || typeof value.message !== 'string' || value.message.length < 3
       || value.message.length > 3000) reject('operator_invalid', 400);
+    // Reject anonymous/citizen calls before spending the owner write-rate budget.
+    await operatorAuth(c);
     await rate('case-update', 30, 3600);
     const updated = await transaction(pool, async db => {
       const actor = await operatorAuth(c, db);
