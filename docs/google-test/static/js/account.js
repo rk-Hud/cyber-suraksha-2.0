@@ -196,11 +196,22 @@
   function updateNavigation() {
     if (!app) return;
     const nav = document.getElementById('account-navigation'); nav.replaceChildren();
-    const items = state.user ? [['cases', 'nav_account'], ['new-case', 'new_complaint']] : [['login', 'sign_in'], ['register', 'create_account'], ['admin-login', 'admin_sign_in']];
+    const ownerLink = document.getElementById('operator-entry-link');
+    const items = state.user
+      ? [['cases', 'nav_account'], ['new-case', 'new_complaint']]
+      : [['login', 'sign_in'], ['register', 'create_account'],
+        ...(ownerLink ? [] : [['admin-login', 'admin_sign_in']])];
     if (state.user?.role === 'owner') items.push(['admin', 'admin_dashboard'], ['users', 'admin_users'], ['content', 'admin_content'], ['mfa', 'mfa_settings']);
     for (const [view, label] of items) {
       const button = action(t(label), () => showView(view), 'workspace-link');
       button.dataset.accountView = view; nav.append(button);
+    }
+    if (ownerLink) {
+      // Navigation only. The operator service independently verifies Google,
+      // a distinct admin password, MFA, role and revocable session.
+      const link = document.createElement('a');
+      link.className = 'workspace-link'; link.textContent = t('admin_sign_in');
+      link.href = ownerLink.href; nav.append(link);
     }
     if (state.user) nav.append(action(t('sign_out'), () => task(async () => {
       try { await client.request('/api/v1/auth/logout', 'POST', {}, { authenticated: true }); }
@@ -434,5 +445,14 @@
   }
   bindForm('account-mfa-confirm', async (values, form) => { await client.request('/api/v1/admin/mfa/confirm', 'POST', values, { authenticated: true }); form.reset(); await verifiedMfa(); });
   bindForm('account-mfa-verify', async (values, form) => { await client.request('/api/v1/admin/mfa/verify', 'POST', values, { authenticated: true }); form.reset(); await verifiedMfa(); });
-  const firstView = location.hash === '#admin' ? 'admin-login' : location.hash === '#register' ? 'register' : 'login'; showView(firstView); readiness = ready();
+  const ownerLink = document.getElementById('operator-entry-link');
+  // Old admin bookmarks lead to the same independent owner sign-in service.
+  // Do not ask for an operator password on the citizen authentication form.
+  if (location.hash === '#admin' && ownerLink) {
+    location.replace(ownerLink.href);
+    readiness = ready();
+    return;
+  }
+  const firstView = location.hash === '#admin' ? 'admin-login' : location.hash === '#register' ? 'register' : 'login';
+  showView(firstView); readiness = ready();
 })(globalThis);

@@ -1,0 +1,7 @@
+CYBER SURAKSHA 2.0 — SOURCE-ONLY WEBSITE HANDOFF
+This artifact is the independently operated staging citizen and administrator website.
+It is NOT an official government/police reporting portal.
+It is NOT deployed and must accept fictional data only.
+Never publish until the locally restored backup and authorized Google/TOTP sign-ins
+are verified, independent privacy/security review completed and release approved.
+PR head commit: 3c663a01fba4310ad96fe9a06f34c2e6d40fdf5f
