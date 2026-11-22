@@ -6,7 +6,7 @@
 
 An independently operated cybersecurity awareness, education and fictional incident-response platform. Owned by Jatoth Ramakrishna. No institutional partnership, government endorsement or external funding is claimed.
 
-[Public website](https://rk-hud.github.io/cyber-suraksha-2.0/) · [Staging citizen workspace](https://rk-hud.github.io/cyber-suraksha-2.0/google-test/en/account.html) · [Staging administrator workspace](https://rk-hud.github.io/cyber-suraksha-2.0/google-test/en/operator.html) · [Deployment record](docs/STAGING_RELEASE_20261122.md)
+[Public website](https://rk-hud.github.io/cyber-suraksha-2.0/) · [Staging citizen workspace](https://rk-hud.github.io/cyber-suraksha-2.0/google-test/en/account.html) · [Staging administrator workspace](https://rk-hud.github.io/cyber-suraksha-2.0/google-test/en/operator.html) · [v2.2.0-staging release](https://github.com/rk-Hud/cyber-suraksha-2.0/releases/tag/v2.2.0-staging) · [Deployment record](docs/STAGING_RELEASE_20261122.md)
 
 ![License](https://img.shields.io/badge/license-MIT-blue) ![Stage](https://img.shields.io/badge/release-staging-teal) ![Languages](https://img.shields.io/badge/languages-EN%20%7C%20HI%20%7C%20TE-blue)
 
@@ -39,6 +39,58 @@ The staging browser communicates with a Cloudflare Worker, which forwards permit
 | Owner staging | [Administrator workspace](https://rk-hud.github.io/cyber-suraksha-2.0/google-test/en/operator.html) | Authorized owner only |
 
 The illustrations above are explanatory graphics, not screenshots. Authenticated screenshots should be cropped and redacted before publication.
+
+## Live website gallery
+
+Actual deployed website screenshots captured on 22 November 2026, cropped and sharpened for readability. Select an image to open its corresponding website section.
+
+### Home
+
+Platform introduction and digital safety tools.
+
+[![Home — deployed website screenshot](docs/assets/screenshots/01-home.png)](https://rk-hud.github.io/cyber-suraksha-2.0/google-test/en/)
+
+### Scam Checker
+
+Explainable browser-based warning-sign checks.
+
+[![Scam Checker — deployed website screenshot](docs/assets/screenshots/02-scam-checker.png)](https://rk-hud.github.io/cyber-suraksha-2.0/google-test/en/#checker)
+
+### Action Planner
+
+Ordered protective steps and reporting guidance.
+
+[![Action Planner — deployed website screenshot](docs/assets/screenshots/03-action-planner.png)](https://rk-hud.github.io/cyber-suraksha-2.0/google-test/en/#planner)
+
+### Citizen Services
+
+Separate citizen sign-in and administrator access in restricted staging.
+
+[![Citizen Services — deployed website screenshot](docs/assets/screenshots/04-citizen-services.png)](https://rk-hud.github.io/cyber-suraksha-2.0/google-test/en/account.html)
+
+### Training & Quiz
+
+Practical cybersecurity awareness exercises.
+
+[![Training & Quiz — deployed website screenshot](docs/assets/screenshots/05-training-quiz.png)](https://rk-hud.github.io/cyber-suraksha-2.0/google-test/en/#training)
+
+### Global Resources
+
+Official resource directory entry (collapsed in this capture).
+
+[![Global Resources — deployed website screenshot](docs/assets/screenshots/06-global-resources.png)](https://rk-hud.github.io/cyber-suraksha-2.0/google-test/en/#resources)
+
+### Safety Assistant
+
+Local, rule-based digital safety guidance.
+
+[![Safety Assistant — deployed website screenshot](docs/assets/screenshots/07-safety-assistant.png)](https://rk-hud.github.io/cyber-suraksha-2.0/google-test/en/#assistant)
+
+### Trust & Privacy
+
+Data-handling boundaries and limitations.
+
+[![Trust & Privacy — deployed website screenshot](docs/assets/screenshots/08-trust-privacy.png)](https://rk-hud.github.io/cyber-suraksha-2.0/google-test/en/#privacy)
 
 ## Source map
 
