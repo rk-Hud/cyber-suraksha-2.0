@@ -163,7 +163,49 @@
           } catch(error) { message('Update denied: ' + error.message); }
           finally { action.disabled = false; }
         });
-        article.append(title,state,form); casesHost.append(article);
+        const details = document.createElement('details');
+        const summary = element('summary', 'View original complaint and activity');
+        const detailHost = element('div', undefined, 'stack-form');
+        details.append(summary, detailHost);
+        let requestNumber = 0;
+        details.addEventListener('toggle', async () => {
+          const requestId = ++requestNumber;
+          detailHost.replaceChildren();
+          if (!details.open) return;
+          const bearer = session.bearer;
+          if (!bearer) return;
+          detailHost.append(element('p', 'Loading complaint details…'));
+          try {
+            const result = await call('cases/' + encodeURIComponent(item.id), undefined, bearer);
+            if (requestId !== requestNumber || session.bearer !== bearer || !details.open || !details.isConnected) return;
+            const record = result.case;
+            if (!record || record.id !== item.id || !Array.isArray(result.events)) throw new Error('invalid_case_details');
+            detailHost.replaceChildren(
+              element('h4', 'Complaint information'),
+              element('p', 'Category: ' + (record.category || '—')),
+              element('p', 'Submitted: ' + dateIST(record.created_at)),
+              element('p', 'Last updated: ' + dateIST(record.updated_at)),
+              element('h4', 'Original complaint'),
+              element('p', record.details || '—'),
+              element('h4', 'Activity and replies')
+            );
+            for (const entry of result.events) {
+              const event = document.createElement('article');
+              event.className = 'surface';
+              const actor = entry.author_role === 'owner' ? 'Administrator' : entry.author_role === 'citizen' ? 'Account holder' : (entry.author_role || 'Account activity');
+              event.append(element('h5', actor + ' — ' + dateIST(entry.created_at)),
+                element('p', 'Status: ' + (entry.new_status || '—')),
+                element('p', entry.message || '—'));
+              detailHost.append(event);
+            }
+            if (!result.events.length) detailHost.append(element('p', 'No recorded activity.'));
+          } catch (error) {
+            if (requestId === requestNumber && session.bearer === bearer && details.open && details.isConnected) {
+              detailHost.replaceChildren(element('p', 'Complaint details unavailable. Close and reopen to retry.'));
+            }
+          }
+        });
+        article.append(title,state,details,form); casesHost.append(article);
       }
       if (!list.items.length) {
         casesHost.append(element('p', 'No matching fictional cases.', 'field-hint'));
