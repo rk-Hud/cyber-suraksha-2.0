@@ -194,6 +194,36 @@ test('staging owner provisioning requires approved Google subject, private key a
   const citizenSummary = await op.app.request('/operator/v1/summary', {
     headers: { Authorization: 'Bearer ' + a.token, Origin: origin } });
   assert.equal(citizenSummary.status, 401);
+
+  // Workspace APIs require an independently verified operator bearer.
+  const workspacePaths = ['/workspace/summary', '/workspace/users', '/workspace/events',
+    '/workspace/sessions', '/workspace/audit', '/workspace/users/' + a.user.id + '/cases'];
+  for (const path of workspacePaths) {
+    const approved = await op.app.request('/operator/v1' + path, {
+      headers: { Authorization: 'Bearer ' + bearer.json.data.token, Origin: origin } });
+    assert.equal(approved.status, 200, path + ' authorized');
+    const denied = await op.app.request('/operator/v1' + path, {
+      headers: { Authorization: 'Bearer ' + b.token, Origin: origin } });
+    assert.equal(denied.status, 401, path + ' citizen token denied');
+    const anonymous = await op.app.request('/operator/v1' + path, { headers: { Origin: origin } });
+    assert.equal(anonymous.status, 401, path + ' anonymous denied');
+  }
+  const overview = await op.app.request('/operator/v1/workspace/summary', {
+    headers: { Authorization: 'Bearer ' + bearer.json.data.token, Origin: origin } });
+  assert.equal((await overview.json()).data.citizens, 2);
+  const usersPage = await op.app.request('/operator/v1/workspace/users?q=citizen-a%40example.test', {
+    headers: { Authorization: 'Bearer ' + bearer.json.data.token, Origin: origin } });
+  const userRows = (await usersPage.json()).data.items;
+  assert.equal(userRows.length, 1);
+  assert.equal(userRows[0].case_count, 1);
+  assert.equal(userRows[0].case_references[0], aCase.json.data.case.reference);
+  assert.ok(!('password_hash' in userRows[0]) && !('totp_secret' in userRows[0]));
+  for (const bad of ['/workspace/users?page=0', '/workspace/users?page=-3',
+    '/workspace/events?type=other', '/workspace/sessions?page=9999']) {
+    const denied = await op.app.request('/operator/v1' + bad, {
+      headers: { Authorization: 'Bearer ' + bearer.json.data.token, Origin: origin } });
+    assert.equal(denied.status, 400, bad);
+  }
   const operatorCases = await op.app.request('/operator/v1/cases', {
     headers: { Authorization: 'Bearer ' + bearer.json.data.token, Origin: origin } });
   assert.equal(operatorCases.status, 200);
@@ -244,7 +274,8 @@ test('staging owner provisioning requires approved Google subject, private key a
   const audits = (await api.pool.query(
     "SELECT action FROM portal_audit_events WHERE action LIKE 'staging.owner.%' ORDER BY created_at")).rows;
   assert.deepEqual(audits.map(x => x.action).sort(),
-    ['staging.owner.mfa_login', 'staging.owner.provisioned', 'staging.owner.case_updated'].sort());
+    ['staging.owner.mfa_login', 'staging.owner.provisioned', 'staging.owner.case_updated',
+      'staging.owner.logout'].sort());
 });
 
 

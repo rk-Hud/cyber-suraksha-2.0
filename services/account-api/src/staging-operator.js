@@ -378,6 +378,121 @@ export function createStagingOperator(options = {}) {
     resolved: ['closed', 'in_review'],
     closed: [],
   };
+
+  // Read-only owner workspace. All endpoints reuse the independently signed
+  // staging operator session, never a citizen bearer or client-side role flag.
+  const PAGE_SIZE = 20;
+  function workspacePage(c) {
+    const raw = c.req.query('page') || '1';
+    if (!/^[1-9][0-9]{0,2}$/.test(raw)) reject('operator_invalid', 400);
+    return Number(raw);
+  }
+  function paged(rows, page) {
+    return { items: rows.slice(0, PAGE_SIZE), page, pageSize: PAGE_SIZE,
+      hasMore: rows.length > PAGE_SIZE, scope: 'fictional-staging-only' };
+  }
+  app.get('/operator/v1/workspace/summary', async c => {
+    await operatorAuth(c);
+    const [users, cases, citizenSessions, ownerSessions, recentLogins] = await Promise.all([
+      pool.query("SELECT count(*)::int AS n FROM portal_users WHERE role='citizen'"),
+      pool.query('SELECT status,count(*)::int AS n FROM portal_complaints GROUP BY status'),
+      pool.query('SELECT count(*)::int AS n FROM portal_sessions s JOIN portal_users u ON u.id=s.user_id WHERE s.authenticated_at IS NOT NULL AND s.expires_at>$1 AND u.active=true', [now()]),
+      pool.query('SELECT count(*)::int AS n FROM cs_stage_operator_sessions s JOIN portal_users u ON u.id=s.owner_id WHERE s.revoked_at IS NULL AND s.expires_at>$1 AND s.mfa_at+600 >= $1 AND u.active=true AND s.owner_version=u.version', [now()]),
+      pool.query('SELECT count(*)::int AS n FROM portal_login_events WHERE success=true AND created_at>=$1', [now()-86400]),
+    ]);
+    const statuses = Object.fromEntries(cases.rows.map(x => [x.status, x.n]));
+    return safe(c, {
+      citizens: users.rows[0].n,
+      cases: Object.values(statuses).reduce((sum, value) => sum + value, 0),
+      pending: statuses.pending || 0,
+      inReview: statuses.in_review || 0,
+      citizenSessions: citizenSessions.rows[0].n,
+      operatorSessions: ownerSessions.rows[0].n,
+      successfulLogins24h: recentLogins.rows[0].n,
+      scope: 'fictional-staging-only',
+    });
+  });
+  app.get('/operator/v1/workspace/users', async c => {
+    await operatorAuth(c);
+    const page = workspacePage(c);
+    const term = (c.req.query('q') || '').trim();
+    if (term.length > 80 || /[\x00-\x1f\x7f]/.test(term)) reject('operator_invalid', 400);
+    const rows = (await pool.query(
+      "SELECT u.id,u.email,u.name,u.role,u.active,u.created_at,u.updated_at, "
+      + "(SELECT max(l.created_at) FROM portal_login_events l WHERE l.user_id=u.id AND l.success=true) AS last_login_at, "
+      + "(SELECT max(l.created_at) FROM portal_login_events l WHERE l.user_id=u.id AND l.success=false) AS last_failed_login_at, "
+      + "(SELECT max(a.created_at) FROM portal_audit_events a WHERE a.actor_id=u.id AND a.action IN ('auth.logout','staging.owner.logout')) AS last_logout_at, "
+      + "(SELECT count(*)::int FROM portal_complaints c WHERE c.user_id=u.id) AS case_count, "
+      + "(SELECT c.status FROM portal_complaints c WHERE c.user_id=u.id ORDER BY c.updated_at DESC,c.id DESC LIMIT 1) AS latest_case_status, "
+      + "ARRAY(SELECT c.reference FROM portal_complaints c WHERE c.user_id=u.id ORDER BY c.updated_at DESC,c.id DESC LIMIT 5) AS case_references, "
+      + "(SELECT count(*)::int FROM portal_sessions s WHERE s.user_id=u.id AND s.authenticated_at IS NOT NULL AND s.expires_at>$3) AS citizen_active_sessions, "
+      + "(SELECT count(*)::int FROM cs_stage_operator_sessions s WHERE s.owner_id=u.id AND s.revoked_at IS NULL AND s.expires_at>$3 AND s.mfa_at+600 >= $3 AND s.owner_version=u.version) AS operator_active_sessions, "
+      + "CASE WHEN u.role='owner' THEN 'google_password_totp' WHEN EXISTS(SELECT 1 FROM portal_google_identities g WHERE g.user_id=u.id) THEN 'google' ELSE 'email_password_otp' END AS authentication_method "
+      + "FROM portal_users u WHERE ($1='' OR position(lower($1) in lower(u.email))>0 OR position(lower($1) in lower(u.name))>0) "
+      + "ORDER BY u.created_at DESC,u.id DESC LIMIT 21 OFFSET $2",
+      [term, (page-1)*PAGE_SIZE, now()])).rows;
+    return safe(c, { ...paged(rows, page), search: term });
+  });
+  app.get('/operator/v1/workspace/users/:id/cases', async c => {
+    await operatorAuth(c);
+    const page = workspacePage(c);
+    if (!identifier(c.req.param('id'))) reject('operator_invalid', 400);
+    const exists = await pool.query('SELECT 1 FROM portal_users WHERE id=$1', [c.req.param('id')]);
+    if (!exists.rowCount) reject('operator_not_found', 404);
+    const rows = (await pool.query(
+      'SELECT reference,status,category,created_at,updated_at FROM portal_complaints '
+      + 'WHERE user_id=$1 ORDER BY updated_at DESC,id DESC LIMIT 21 OFFSET $2',
+      [c.req.param('id'), (page-1)*PAGE_SIZE])).rows;
+    return safe(c, paged(rows, page));
+  });
+  app.get('/operator/v1/workspace/events', async c => {
+    await operatorAuth(c);
+    const page = workspacePage(c);
+    const type = c.req.query('type') || 'all';
+    if (!['all','login','logout','audit'].includes(type)) reject('operator_invalid', 400);
+    const rows = (await pool.query(
+      "SELECT event_id,user_id,email,source,result,detail,created_at FROM ( "
+      + "SELECT l.id AS event_id,l.user_id,l.email,'login'::text AS source, "
+      + "CASE WHEN l.success THEN 'success' ELSE 'failed' END AS result, "
+      + "l.reason AS detail,l.created_at FROM portal_login_events l "
+      + "UNION ALL SELECT a.id,a.actor_id,u.email, "
+      + "CASE WHEN a.action IN ('auth.logout','staging.owner.logout') THEN 'logout' ELSE 'audit' END, "
+      + "'recorded'::text,a.action,a.created_at FROM portal_audit_events a "
+      + "JOIN portal_users u ON u.id=a.actor_id "
+      + ") events WHERE ($1='all' OR source=$1) ORDER BY created_at DESC,event_id DESC LIMIT 21 OFFSET $2",
+      [type, (page-1)*PAGE_SIZE])).rows;
+    // A failed login email is a *claimed* address, not a verified identity.
+    return safe(c, { ...paged(rows, page), type, emailTrust: 'failed-login-email-unverified' });
+  });
+  app.get('/operator/v1/workspace/sessions', async c => {
+    await operatorAuth(c);
+    const page = workspacePage(c);
+    const stamp = now();
+    const rows = (await pool.query(
+      "SELECT user_id,email,service,created_at,expires_at,session_state FROM ( "
+      + "SELECT s.user_id,u.email,'citizen'::text AS service,s.created_at,s.expires_at, "
+      + "CASE WHEN NOT u.active THEN 'revoked' WHEN s.expires_at <= $1 THEN 'expired' ELSE 'active' END AS session_state "
+      + "FROM portal_sessions s JOIN portal_users u ON u.id=s.user_id WHERE s.authenticated_at IS NOT NULL "
+      + "UNION ALL SELECT s.owner_id,u.email,'operator'::text,s.created_at,s.expires_at, "
+      + "CASE WHEN s.revoked_at IS NOT NULL OR NOT u.active OR s.owner_version<>u.version THEN 'revoked' "
+      + "WHEN s.expires_at <= $1 THEN 'expired' WHEN s.mfa_at + 600 < $1 THEN 'mfa_refresh_required' ELSE 'active' END "
+      + "FROM cs_stage_operator_sessions s JOIN portal_users u ON u.id=s.owner_id "
+      + ") sessions ORDER BY created_at DESC,user_id DESC LIMIT 21 OFFSET $2",
+      [stamp, (page-1)*PAGE_SIZE])).rows;
+    return safe(c, { ...paged(rows, page),
+      note: 'Deleted citizen sessions cannot be reconstructed; browser close does not prove logout.' });
+  });
+  app.get('/operator/v1/workspace/audit', async c => {
+    await operatorAuth(c);
+    const page = workspacePage(c);
+    const rows = (await pool.query(
+      'SELECT a.id,a.actor_id,u.email,a.action,a.record,a.created_at '
+      + 'FROM portal_audit_events a JOIN portal_users u ON u.id=a.actor_id '
+      + 'ORDER BY a.created_at DESC,a.id DESC LIMIT 21 OFFSET $1',
+      [(page-1)*PAGE_SIZE])).rows;
+    return safe(c, paged(rows, page));
+  });
+
   app.get('/operator/v1/summary', async c => {
     await operatorAuth(c);
     const rows = (await pool.query(
@@ -438,10 +553,13 @@ export function createStagingOperator(options = {}) {
   });
   app.post('/operator/v1/logout', async c => {
     await body(c, []);
-    const actor = await operatorAuth(c);
-    await pool.query(
-      'UPDATE cs_stage_operator_sessions SET revoked_at=$1 WHERE id=$2 AND revoked_at IS NULL',
-      [now(), actor.session_id]);
+    await transaction(pool, async db => {
+      const actor = await operatorAuth(c, db);
+      await db.query(
+        'UPDATE cs_stage_operator_sessions SET revoked_at=$1 WHERE id=$2 AND revoked_at IS NULL',
+        [now(), actor.session_id]);
+      await audit(db, actor.owner_id, 'staging.owner.logout', actor.session_id);
+    });
     return safe(c, { signedOut: true });
   });
 
